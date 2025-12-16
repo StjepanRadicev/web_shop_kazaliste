@@ -1,5 +1,6 @@
 package com.ecommerce.project.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -45,6 +46,7 @@ public class Address {
     @Size(min = 5, message = "Zipcode name must be at least 5 characters")
     private String zipCode;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;

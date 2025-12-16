@@ -13,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -26,6 +27,7 @@ public class AddressController {
     private AddressService addressService;
 
 
+
     @PostMapping("/addresses")
     public ResponseEntity<AddressDTO> createAddress(@Valid @RequestBody AddressDTO addressDTO) {
 
@@ -37,10 +39,51 @@ public class AddressController {
     }
 
     @GetMapping("/addresses")
-    public ResponseEntity<List<AddressDTO>> getAllAddresses () {
+    public ResponseEntity<List<AddressDTO>> getAllAddresses() {
 
         List<AddressDTO> addressDTOS = addressService.getAllAddresses();
 
         return new ResponseEntity<List<AddressDTO>>(addressDTOS, HttpStatus.OK);
     }
+
+    @GetMapping("/addresses/{addressId}")
+    public ResponseEntity<AddressDTO> getAddressById(@PathVariable Long addressId) {
+
+        AddressDTO addressDTO = addressService.getAddressById(addressId);
+
+        return new ResponseEntity<AddressDTO>(addressDTO, HttpStatus.OK);
+    }
+
+    @GetMapping("/users/addresses")
+    public ResponseEntity<List<AddressDTO>> getAddressByUser() {
+        Long userId = authUtil.loggedInUserId();
+
+        List<AddressDTO> addressDTOList = addressService.getAddressByUser(userId);
+
+        return new ResponseEntity<List<AddressDTO>>(addressDTOList, HttpStatus.OK);
+    }
+
+    @PatchMapping("/addresses/{addressId}")
+    public ResponseEntity<AddressDTO> updateAddress(@RequestBody Map<String, Object> patchPayLoad,
+                                          @PathVariable Long addressId) {
+
+        AddressDTO addressDTO = addressService.patchedUpdatePerformance(addressId, patchPayLoad);
+
+        return new ResponseEntity<AddressDTO>(addressDTO, HttpStatus.OK);
+    }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -124,143 +124,14 @@ public class CategoryServiceImpl implements CategoryService{
 
         //category.setCategoryId(categoryId);
 
-        // => Proba
+
         savedCategory.setCategoryName(category.getCategoryName());
 
         categoryRepository.save(savedCategory);
 
         return modelMapper.map(savedCategory, CategoryDTO.class);
 
-
-//  -> Prva šema
-//        List<Category> categories = categoryRepository.findAll();
-//
-//        Optional<Category> optionalCategory = categories.stream()
-//                .filter(c -> c.getCategoryId().equals(categoryId))
-//                .findFirst();
-//
-//        if(optionalCategory.isPresent()) {
-//            Category existingCategory = optionalCategory.get();
-//            existingCategory.setCategoryName(category.getCategoryName());
-//            Category savedCategory = categoryRepository.save(existingCategory);
-//
-//            return savedCategory;
-//        } else {
-//            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found");
-//        }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//    @Override
-//    public Category patchCategory(Map<String, Object> patchPayLoad, Long categoryId) {
-//
-//        Optional<Category> optionalCategory = categories.stream()
-//                .filter(c -> c.getCategoryId().equals(categoryId))
-//                .findFirst();
-//
-//        // throw exception if request body contains "id" key
-//        if (patchPayLoad.containsKey("categoryId")) {
-//            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bad Request");
-//        }
-//
-//        if(optionalCategory.isPresent()) {
-//            Category existingCategory = optionalCategory.get();
-//            Category patchedCategory = apply(patchPayLoad, existingCategory);
-//
-//
-//            existingCategory.setCategoryName(patchedCategory.getCategoryName());
-//            return existingCategory;
-//        } else {
-//            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found");
-//        }
-//
-//
-//    }
-//    //
-//    public Category apply(Map<String,Object> patchPayload, Category tempCategory) {
-//
-//        // Convert employee object to a JSON object node
-//
-//        ObjectNode employeeNode = objectMapper.convertValue(tempCategory, ObjectNode.class);
-//
-//        // Convert the patchPayload map to a JSON object node
-//        ObjectNode patchNode = objectMapper.convertValue(patchPayload, ObjectNode.class);
-//
-//        // Merge the patch updates into the employee node
-//        employeeNode.setAll(patchNode);
-//
-//        return objectMapper.convertValue(employeeNode, Category.class);
-//    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
