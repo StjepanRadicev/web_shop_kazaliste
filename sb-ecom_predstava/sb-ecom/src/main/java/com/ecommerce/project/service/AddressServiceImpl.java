@@ -88,10 +88,12 @@ public class AddressServiceImpl implements AddressService{
 
         // if exists Id in JSON request body
         if(JsonPatchUtils.containsAnyIdKey(patchPayLoad)) {
-            throw new APIException("Product id not allowed in request body ");
+            throw new APIException("Address id not allowed in request body ");
         }
 
         Address patchedAddress = apply(patchPayLoad, address);
+
+        patchedAddress.setUser(address.getUser());
 
         Address savedAddress  = addressRepository.save(patchedAddress);
 

@@ -290,7 +290,7 @@ public class PerformanceServiceImpl implements PerformanceService {
                 .orElseThrow(()-> new ResourceNotFoundException("Performance", "performanceId", performanceId));
 
         // if exist product with same name
-        String newPerformanceName = patchPayLoad.get("productName").toString();
+        String newPerformanceName = patchPayLoad.get("performanceName").toString();
 
         if (newPerformanceName != null) {
             Performance savedPerformanceByName = performanceRepository.findByPerformanceNameIgnoreCase(newPerformanceName);
@@ -301,7 +301,7 @@ public class PerformanceServiceImpl implements PerformanceService {
 
         // if exists Id in JSON request body
         if(JsonPatchUtils.containsAnyIdKey(patchPayLoad)) {
-            throw new APIException("Product id not allowed in request body ");
+            throw new APIException("Performance id not allowed in request body ");
         }
 
         Performance patchedPerformance = apply(patchPayLoad, performanceFromDb);
