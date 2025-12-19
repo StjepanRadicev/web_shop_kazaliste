@@ -1,23 +1,19 @@
 package com.ecommerce.project.service;
 
-import ch.qos.logback.core.read.ListAppender;
-import com.ecommerce.project.exception.APIException;
 import com.ecommerce.project.exception.ResourceNotFoundException;
-import com.ecommerce.project.helper.JsonPatchUtils;
 import com.ecommerce.project.model.Address;
-import com.ecommerce.project.model.Performance;
 import com.ecommerce.project.model.User;
 import com.ecommerce.project.payload.AddressDTO;
+import com.ecommerce.project.payload.AddressPatchRequest;
 import com.ecommerce.project.repositories.AddressRepository;
+import com.ecommerce.project.repositories.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class AddressServiceImpl implements AddressService{
@@ -30,6 +26,9 @@ public class AddressServiceImpl implements AddressService{
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
 
 
     @Override
@@ -80,37 +79,45 @@ public class AddressServiceImpl implements AddressService{
                 .toList();
     }
 
+    @Transactional
     @Override
-    public AddressDTO patchedUpdatePerformance(Long addressId, Map<String, Object> patchPayLoad) {
+    public AddressDTO updateAddress(Long addressId, AddressPatchRequest request) {
 
         Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new ResourceNotFoundException("Address", "addressId", addressId));
 
-        // if exists Id in JSON request body
-        if(JsonPatchUtils.containsAnyIdKey(patchPayLoad)) {
-            throw new APIException("Address id not allowed in request body ");
-        }
+        if (request.getCountry() != null) address.setCountry(request.getCountry());
+        if (request.getCity() != null) address.setCity(request.getCity());
+        if (request.getStreet() != null) address.setStreet(request.getStreet());
+        if (request.getZipCode() != null) address.setZipCode(request.getZipCode());
+        if (request.getBuildingName() != null) address.setBuildingName(request.getBuildingName());
+        if (request.getState() != null) address.setState(request.getState());
 
-        Address patchedAddress = apply(patchPayLoad, address);
+        addressRepository.save(address);
 
-        patchedAddress.setUser(address.getUser());
+        User user = address.getUser();
+        user.getAddresses().removeIf(address1 -> address1.getAddressId().equals(addressId));
+        user.getAddresses().add(address);
+        userRepository.save(user);
 
-        Address savedAddress  = addressRepository.save(patchedAddress);
-
-        return modelMapper.map(savedAddress, AddressDTO.class);
+        return modelMapper.map(address, AddressDTO.class);
     }
 
-    //method for patch update
-    public Address apply(Map<String, Object> patchPayLoad, Address tempPerformance) {
+    @Override
+    public AddressDTO deleteAddress(Long addressId) {
 
-        ObjectNode performanceNode = objectMapper.convertValue(tempPerformance, ObjectNode.class);
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new ResourceNotFoundException("Address", "addressId", addressId));
 
-        ObjectNode patchNode = objectMapper.convertValue(patchPayLoad, ObjectNode.class);
+        User user = address.getUser();
+        user.getAddresses().removeIf(address1 -> address1.getAddressId().equals(addressId));
+        userRepository.save(user);
 
-        performanceNode.setAll(patchNode);
+        addressRepository.delete(address);
 
-        return objectMapper.convertValue(performanceNode, Address.class);
+        return modelMapper.map(address, AddressDTO.class);
     }
+
 
 }
 

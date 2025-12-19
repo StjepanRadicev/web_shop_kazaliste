@@ -3,6 +3,7 @@ package com.ecommerce.project.controller;
 
 import com.ecommerce.project.model.User;
 import com.ecommerce.project.payload.AddressDTO;
+import com.ecommerce.project.payload.AddressPatchRequest;
 import com.ecommerce.project.service.AddressService;
 import com.ecommerce.project.util.AuthUtil;
 import jakarta.validation.Valid;
@@ -64,14 +65,21 @@ public class AddressController {
     }
 
     @PatchMapping("/addresses/{addressId}")
-    public ResponseEntity<AddressDTO> updateAddress(@RequestBody Map<String, Object> patchPayLoad,
-                                          @PathVariable Long addressId) {
+    public ResponseEntity<AddressDTO> updateAddress(@RequestBody AddressPatchRequest request,
+                                                    @PathVariable Long addressId) {
 
-        AddressDTO addressDTO = addressService.patchedUpdatePerformance(addressId, patchPayLoad);
+        AddressDTO addressDTO = addressService.updateAddress(addressId, request);
 
         return new ResponseEntity<AddressDTO>(addressDTO, HttpStatus.OK);
     }
 
+    @DeleteMapping("/addresses/{addressId}")
+    public ResponseEntity<AddressDTO> deleteAddress(@PathVariable Long addressId) {
+
+        AddressDTO addressDTO = addressService.deleteAddress(addressId);
+
+        return new ResponseEntity<AddressDTO>(addressDTO, HttpStatus.OK);
+    }
 }
 
 

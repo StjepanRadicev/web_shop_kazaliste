@@ -1,5 +1,6 @@
 package com.ecommerce.project.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -24,6 +25,7 @@ public class Category {
     @NotBlank(message = "Name of category is necessary")
     @Size(min = 5, message = "Category name must contain at least 5 characters")
     private String categoryName;
+
 
     @OneToMany(mappedBy = "category",
             cascade = {CascadeType.PERSIST, CascadeType.MERGE},

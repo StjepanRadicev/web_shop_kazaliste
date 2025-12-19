@@ -61,7 +61,6 @@ public class User {
 
     @Getter
     @Setter
-    @JsonManagedReference
     @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
 //    @JoinTable(name = "user_address",
 //            joinColumns = @JoinColumn(name = "user_id"),

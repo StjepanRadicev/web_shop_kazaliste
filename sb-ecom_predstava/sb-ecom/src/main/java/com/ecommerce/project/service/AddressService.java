@@ -2,10 +2,10 @@ package com.ecommerce.project.service;
 
 import com.ecommerce.project.model.User;
 import com.ecommerce.project.payload.AddressDTO;
+import com.ecommerce.project.payload.AddressPatchRequest;
 import jakarta.validation.Valid;
 
 import java.util.List;
-import java.util.Map;
 
 public interface AddressService {
 
@@ -17,5 +17,7 @@ public interface AddressService {
 
     List<AddressDTO> getAddressByUser(Long userId);
 
-    AddressDTO patchedUpdatePerformance(Long addressId, Map<String, Object> patchPayLoad);
+    AddressDTO updateAddress(Long addressId, AddressPatchRequest request);
+
+    AddressDTO deleteAddress(Long addressId);
 }

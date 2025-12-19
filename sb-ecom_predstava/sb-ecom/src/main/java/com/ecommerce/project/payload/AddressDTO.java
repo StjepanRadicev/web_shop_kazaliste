@@ -41,4 +41,6 @@ public class AddressDTO {
     @NotBlank
     @Size(min = 5, message = "Zipcode name must be at least 5 characters")
     private String zipCode;
+
+    private String userName;
 }
