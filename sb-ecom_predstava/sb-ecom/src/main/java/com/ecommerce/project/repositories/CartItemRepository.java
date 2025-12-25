@@ -19,4 +19,11 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     @Query("SELECT ci.performance.performanceId, SUM(ci.quantity) " +
             "FROM CartItem ci GROUP BY ci.performance.performanceId")
     List<Object[]> findTotalQuantities();
+
+    @Query("""
+            SELECT COALESCE(SUM(ci.quantity), 0)
+            FROM CartItem ci
+            WHERE ci.performance.performanceId = :performanceId
+            """)
+    Integer findTotalReservedByPerformanceId(Long performanceId);
 }

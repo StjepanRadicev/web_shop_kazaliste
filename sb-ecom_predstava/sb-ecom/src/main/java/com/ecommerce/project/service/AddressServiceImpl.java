@@ -79,8 +79,9 @@ public class AddressServiceImpl implements AddressService{
                 .toList();
     }
 
-    @Transactional
+
     @Override
+    @Transactional
     public AddressDTO updateAddress(Long addressId, AddressPatchRequest request) {
 
         Address address = addressRepository.findById(addressId)
