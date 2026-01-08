@@ -4,6 +4,7 @@ import com.ecommerce.project.model.CartItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -25,5 +26,5 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
             FROM CartItem ci
             WHERE ci.performance.performanceId = :performanceId
             """)
-    Integer findTotalReservedByPerformanceId(Long performanceId);
+    Integer findTotalReservedByPerformanceId(@Param("performanceId") Long performanceId);
 }

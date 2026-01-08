@@ -41,6 +41,9 @@ public class Performance {
 
     private LocalDateTime localDateTime;
 
+    @Version
+    private long version;
+
     @ManyToOne
     @JoinColumn(name = "show_id")
     private Show show;

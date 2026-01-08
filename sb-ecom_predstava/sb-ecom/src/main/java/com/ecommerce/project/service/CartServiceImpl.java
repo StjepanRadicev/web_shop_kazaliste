@@ -9,10 +9,7 @@ import com.ecommerce.project.model.Performance;
 import com.ecommerce.project.payload.CartDTO;
 import com.ecommerce.project.payload.CartItemDTO;
 import com.ecommerce.project.payload.PerformanceDTO;
-import com.ecommerce.project.repositories.CartItemRepository;
-import com.ecommerce.project.repositories.CartRepository;
-import com.ecommerce.project.repositories.OrderRepository;
-import com.ecommerce.project.repositories.PerformanceRepository;
+import com.ecommerce.project.repositories.*;
 import com.ecommerce.project.util.AuthUtil;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,10 +41,14 @@ public class CartServiceImpl implements CartService{
     @Autowired
     PerformanceAvailabilityService performanceAvailabilityService;
 
+    @Autowired
+    OrderItemRepository orderItemRepository;
+
 
 
 
     @Override
+    @Transactional
     public CartDTO addPerformanceToCart(Long performanceId, Integer quantity) {
 
 
@@ -55,10 +56,11 @@ public class CartServiceImpl implements CartService{
         Cart cart = createCart();
 
         // Retrieve Product Details
-        Performance performance = performanceRepository.findById(performanceId)
+        Performance performance = performanceRepository.findByIdForUpdate(performanceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Performance", "performanceId", performanceId));
 
-        int performanceQuantity = performanceAvailabilityService.getAvailability(performanceId);
+
+        int performanceQuantity = performanceAvailabilityService.getAvailability(performance,performanceId);
 
         // Perform Validations
         CartItem cartItem = cartItemRepository.findCartItemByPerformanceIdAndCartId(cart.getCartId(), performanceId);
@@ -76,6 +78,8 @@ public class CartServiceImpl implements CartService{
             + " less than or equal to the quantity " + performanceQuantity + ".");
         }
 
+
+
         // Create Cart Item
         CartItem newCartItem = new CartItem();
         newCartItem.setPerformance(performance);
@@ -86,6 +90,7 @@ public class CartServiceImpl implements CartService{
 
         // Save Cart Item
         cartItemRepository.save(newCartItem);
+
 
         //performance.setQuantity(performance.getQuantity() - quantity);
 
@@ -172,7 +177,7 @@ public class CartServiceImpl implements CartService{
         Performance performance = performanceRepository.findById(performanceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Performance", "performanceId", performanceId));
 
-        int performanceQuantity = performanceAvailabilityService.getAvailability(performanceId);
+        int performanceQuantity = performanceAvailabilityService.getAvailability(performance, performanceId);
 
         CartItem cartItem = cartItemRepository.findCartItemByPerformanceIdAndCartId(cartId, performanceId);
         if (cartItem == null) {

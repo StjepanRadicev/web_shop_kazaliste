@@ -1,6 +1,8 @@
 package com.ecommerce.project.service;
 
+import com.ecommerce.project.model.Performance;
+
 public interface PerformanceAvailabilityService {
 
-    int getAvailability(Long performanceId);
+    int getAvailability(Performance performance, Long performanceId);
 }
