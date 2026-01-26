@@ -9,9 +9,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class OrderItemDTO {
 
-    private Long orderItemId;
-    private PerformanceDTO performance;
-    private Integer quantity;
+    private String performanceName;
+
+    private String rowLabel;
+
+    private String section;
+
     private double discount;
+
     private double orderedPerformancePrice;
 }

@@ -27,6 +27,10 @@ public class Performance {
     @NotBlank
     private String performanceName;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional=false)
+    @JoinColumn(name="hall_id", nullable=false)
+    private Hall hall;
+
     private String image;
 
     private String description;
@@ -55,5 +59,5 @@ public class Performance {
     @OneToMany(mappedBy = "performance",
             cascade = {CascadeType.PERSIST, CascadeType.MERGE},
             fetch = FetchType.EAGER)
-    private List<CartItem> performances = new ArrayList<>();
+    private List<PerformanceSeat> performanceSeats = new ArrayList<>();
 }

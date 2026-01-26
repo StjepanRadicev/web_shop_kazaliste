@@ -15,15 +15,19 @@ public class OrderItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long orderItemId;
 
-    @ManyToOne
-    @JoinColumn(name = "performance_id")
-    private Performance performance;
+//    @ManyToOne
+//    @JoinColumn(name = "performance_id")
+//    private Performance performance;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "performance_seat_id", nullable = false)
+    private PerformanceSeat performanceSeat;
 
     @ManyToOne
     @JoinColumn(name = "order_id")
     private Order order;
 
-    private Integer quantity;
+
 
     private double discount;
 

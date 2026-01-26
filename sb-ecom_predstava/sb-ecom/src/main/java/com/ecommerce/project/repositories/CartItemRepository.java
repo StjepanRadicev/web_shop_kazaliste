@@ -1,30 +1,35 @@
 package com.ecommerce.project.repositories;
 
+import com.ecommerce.project.config.ExpiredHeldItem;
 import com.ecommerce.project.model.CartItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
-    @Query("SELECT ci FROM CartItem ci WHERE ci.cart.id = ?1 AND ci.performance.id = ?2")
-    CartItem findCartItemByPerformanceIdAndCartId(Long cartId, Long performanceId);
 
-    @Modifying
-    @Query("DELETE FROM CartItem ci WHERE ci.cart.id = ?1 AND ci.performance.id = ?2")
-    void deleteCartItemByPerformanceIdAndCartId(Long cartId, Long performanceId);
-
-    @Query("SELECT ci.performance.performanceId, SUM(ci.quantity) " +
-            "FROM CartItem ci GROUP BY ci.performance.performanceId")
-    List<Object[]> findTotalQuantities();
 
     @Query("""
-            SELECT COALESCE(SUM(ci.quantity), 0)
-            FROM CartItem ci
-            WHERE ci.performance.performanceId = :performanceId
-            """)
-    Integer findTotalReservedByPerformanceId(@Param("performanceId") Long performanceId);
+  select ci.cart.id as cartId,
+         ci.performanceSeat.performanceSeatId as performanceSeatId
+  from CartItem ci
+  where ci.performanceSeat.status = com.ecommerce.project.model.PerformanceSeatStatus.HELD
+    and ci.performanceSeat.heldUntil < :now
+    and ci.performanceSeat.heldByCartId = ci.cart.id
+  """)
+    List<ExpiredHeldItem> findExpiredHeldItems(@Param("now") LocalDateTime now);
+
+
+    @Query("SELECT ci FROM CartItem ci WHERE ci.cart.id = ?1 AND ci.performanceSeat.id = ?2")
+    CartItem findCartItemByPerformanceSeatIdAndCartId(Long cartId, Long performanceSeatId);
+
+
+    @Modifying
+    @Query("DELETE FROM CartItem ci WHERE ci.cart.id = ?1 AND ci.performanceSeat.id = ?2")
+    void deleteCartItemByPerformanceSeatIdAndCartId(Long cartId, Long performanceSeatId);
 }

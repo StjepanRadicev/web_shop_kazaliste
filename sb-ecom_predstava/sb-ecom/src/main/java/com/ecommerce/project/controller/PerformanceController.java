@@ -23,10 +23,11 @@ public class PerformanceController {
     @Autowired
     PerformanceService performanceService;
 
-    @PostMapping("/admin/show/{showId}/performance")
+    @PostMapping("/admin/show/{showId}/hall/{hallId}/performance")
     public ResponseEntity<PerformanceDTO> addPerformance(@Valid @RequestBody PerformanceDTO performanceDTO,
-                                                     @PathVariable Long showId) {
-        PerformanceDTO savedPerformanceDTO = performanceService.addPerformance(showId, performanceDTO);
+                                                     @PathVariable Long showId,
+                                                         @PathVariable Long hallId) {
+        PerformanceDTO savedPerformanceDTO = performanceService.addPerformance(showId, hallId, performanceDTO);
 
         return  new ResponseEntity<>(savedPerformanceDTO, HttpStatus.CREATED);
     }

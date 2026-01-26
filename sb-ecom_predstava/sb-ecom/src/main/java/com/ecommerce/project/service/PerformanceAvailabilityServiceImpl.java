@@ -25,11 +25,6 @@ public class PerformanceAvailabilityServiceImpl implements PerformanceAvailabili
     @Override
     public int getAvailability(Performance performance, Long performanceId) {
 
-        int reservedPerformances = cartItemRepository.findTotalReservedByPerformanceId(performanceId);
-
-        int orderedPerformances = orderItemRepository.findTotalOrderedByPerformanceId(performanceId);
-
-
-        return performance.getQuantity() - reservedPerformances - orderedPerformances;
+        return 0;
     }
 }

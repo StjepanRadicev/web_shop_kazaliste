@@ -5,10 +5,7 @@ import com.ecommerce.project.exception.ResourceNotFoundException;
 import com.ecommerce.project.helper.JsonPatchUtils;
 import com.ecommerce.project.helper.SortHelper;
 import com.ecommerce.project.helper.SortValidator;
-import com.ecommerce.project.model.Cart;
-import com.ecommerce.project.model.Category;
-import com.ecommerce.project.model.Performance;
-import com.ecommerce.project.model.Show;
+import com.ecommerce.project.model.*;
 import com.ecommerce.project.payload.CartDTO;
 import com.ecommerce.project.payload.PerformanceDTO;
 import com.ecommerce.project.payload.PerformanceResponse;
@@ -32,6 +29,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.transaction.annotation.Transactional;
 
 
 @Service
@@ -56,16 +54,29 @@ public class PerformanceServiceImpl implements PerformanceService {
     private ShowRepository showRepository;
 
     @Autowired
+    private SeatRepository seatRepository;
+
+    @Autowired
+    private PerformanceSeatRepository performanceSeatRepository;
+
+    @Autowired
+    private HallRepository hallRepository;
+
+    @Autowired
     private ModelMapper modelMapper;
 
     @Autowired
     private ObjectMapper objectMapper;
 
 
+    @Transactional
     @Override
-    public PerformanceDTO addPerformance(Long showId, PerformanceDTO performanceDTO) {
+    public PerformanceDTO addPerformance(Long showId, Long hallId,  PerformanceDTO performanceDTO) {
         Show show = showRepository.findById(showId)
                 .orElseThrow(() -> new ResourceNotFoundException("Show", "showId", showId));
+
+        Hall hall = hallRepository.findById(hallId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hall", "hallId", hallId));
 
         Performance performance = modelMapper.map(performanceDTO, Performance.class);
 
@@ -78,9 +89,33 @@ public class PerformanceServiceImpl implements PerformanceService {
 
         performance.setImage("default.png");
         performance.setShow(show);
+        performance.setHall(hall);
         double specialPrice = performance.getPrice() - ((performance.getDiscount() * 0.01) * performance.getPrice());
         performance.setSpecialPrice(specialPrice);
         Performance savedPerformance = performanceRepository.save(performance);
+
+        // 2)  sva sjedala dvorane
+        // Long hallId = savedPerformance.getHall().getHallId();
+        List<Seat> seats = seatRepository.findByHall_HallId(hallId);
+
+        if (seats.isEmpty()) {
+            throw new IllegalStateException("Hall has no seats. Create seats first.");
+        }
+
+
+        // 3) PerformanceSeat za svako sjedalo
+        List<PerformanceSeat> inventory = seats.stream().map(seat -> {
+            PerformanceSeat ps = new PerformanceSeat();
+            ps.setPerformance(savedPerformance);
+            ps.setSeat(seat);
+            ps.setStatus(PerformanceSeatStatus.AVAILABLE);
+            ps.setHeldUntil(null);
+            ps.setHeldByCartId(null);
+            ps.setPrice(savedPerformance.getPrice());
+            return ps;
+        }).toList();
+
+        performanceSeatRepository.saveAll(inventory);
 
 
         PerformanceDTO dto = modelMapper.map(savedPerformance, PerformanceDTO.class);
@@ -94,7 +129,7 @@ public class PerformanceServiceImpl implements PerformanceService {
     public PerformanceResponse getAllPerformances() {
         List<Performance> performances = performanceRepository.findAll();
 
-        Map<Long, Integer> totals = getTotalReservedQuantities();
+        //Map<Long, Integer> totals = getTotalReservedQuantities();
 
         List<PerformanceDTO> performanceDTOS = performances.stream()
                 .map(performance -> {
@@ -102,9 +137,9 @@ public class PerformanceServiceImpl implements PerformanceService {
                     perDTO.setCategoryName(
                             performance.getShow().getCategory().getCategoryName()
                     );
-                    perDTO.setTotalInCarts(
-                            totals.getOrDefault(performance.getPerformanceId(),0)
-                    );
+//                    perDTO.setTotalInCarts(
+//                            totals.getOrDefault(performance.getPerformanceId(),0)
+//                    );
                     return perDTO;
                 })
                 .collect(Collectors.toList());
@@ -258,24 +293,24 @@ public class PerformanceServiceImpl implements PerformanceService {
         // Save to database
         Performance savedPerformance = performanceRepository.save(performanceFromDb);
 
-        List<Cart> carts = cartRepository.findCartsByPerformanceId(performanceId);
+        //List<Cart> carts = cartRepository.findCartsByPerformanceId(performanceId);
 
-        List<CartDTO> cartDTOs = carts.stream().map(cart -> {
-            CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
-
-            List<PerformanceDTO> performances = cart.getCartItems().stream()
-                    .map(item -> {
-                        PerformanceDTO performanceDTOs = modelMapper.map(item.getPerformance(), PerformanceDTO.class);
-                        performanceDTO.setQuantityInCart(item.getQuantity()); // količina u korpi
-                        return performanceDTOs;
-                    })
-                    .collect(Collectors.toList());
-
-            cartDTO.setPerformances(performances);
-            return cartDTO;
-        }).collect(Collectors.toList());
-
-        cartDTOs.forEach(cart -> cartService.updatePerformanceInCarts(cart.getCartId(), performanceId));
+//        List<CartDTO> cartDTOs = carts.stream().map(cart -> {
+//            CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
+//
+//            List<PerformanceDTO> performances = cart.getCartItems().stream()
+//                    .map(item -> {
+//                        PerformanceDTO performanceDTOs = modelMapper.map(item.getPerformanceSeat(), PerformanceDTO.class);
+//                        performanceDTO.setQuantityInCart(item.getQuantity()); // količina u korpi
+//                        return performanceDTOs;
+//                    })
+//                    .collect(Collectors.toList());
+//
+//            cartDTO.setPerformances(performances);
+//            return cartDTO;
+//        }).collect(Collectors.toList());
+//
+//        cartDTOs.forEach(cart -> cartService.updatePerformanceInCarts(cart.getCartId(), performanceId));
 
 
         PerformanceDTO dto = modelMapper.map(savedPerformance, PerformanceDTO.class);
@@ -316,8 +351,8 @@ public class PerformanceServiceImpl implements PerformanceService {
         Performance performanceFromDb = performanceRepository.findById(performanceId)
                 .orElseThrow(()-> new ResourceNotFoundException("Performance", "performanceId", performanceId));
 
-        List<Cart> carts = cartRepository.findCartsByPerformanceId(performanceId);
-        carts.forEach(cart -> cartService.deletePerformanceFromCart(cart.getCartId(), performanceId));
+//        List<Cart> carts = cartRepository.findCartsByPerformanceId(performanceId);
+//        carts.forEach(cart -> cartService.deletePerformanceFromCart(cart.getCartId(), performanceId));
 
         performanceRepository.delete(performanceFromDb);
 
@@ -336,19 +371,19 @@ public class PerformanceServiceImpl implements PerformanceService {
         return objectMapper.convertValue(performanceNode, Performance.class);
     }
 
-    public Map<Long, Integer> getTotalReservedQuantities() {
-        List<Object[]> rows = cartItemRepository.findTotalQuantities();
-
-        Map<Long, Integer> map = new HashMap<>();
-
-        for (Object[] row : rows) {
-            Long performanceId = (Long) row[0];
-            Integer total = ((Number) row[1]).intValue();
-            map.put(performanceId, total);
-        }
-
-        return map;
-    }
+//    public Map<Long, Integer> getTotalReservedQuantities() {
+//        //List<Object[]> rows = cartItemRepository.findTotalQuantities();
+//
+//        Map<Long, Integer> map = new HashMap<>();
+//
+//        for (Object[] row : rows) {
+//            Long performanceId = (Long) row[0];
+//            Integer total = ((Number) row[1]).intValue();
+//            map.put(performanceId, total);
+//        }
+//
+//        return map;
+//    }
 }
 
 

@@ -8,7 +8,7 @@ import java.util.List;
 public interface CartService {
 
 
-    CartDTO addPerformanceToCart(Long performanceId, Integer quantity);
+    CartDTO addSeatToCart(Long performanceSeatId);
 
     List<CartDTO> getAllCarts();
 
@@ -20,4 +20,7 @@ public interface CartService {
     String deletePerformanceFromCart(Long cartId, Long performanceId);
 
     void updatePerformanceInCarts(Long cartId, Long performanceId);
+
+    @Transactional
+    void cleanupExpiredHeldItems();
 }

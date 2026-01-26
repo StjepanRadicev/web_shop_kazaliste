@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,7 +35,10 @@ public class OrderServiceImpl implements OrderService{
     private OrderItemRepository orderItemRepository;
 
     @Autowired
-    private PerformanceRepository performanceRepository;
+    private PerformanceSeatRepository performanceseatRepository;
+
+    @Autowired
+    private CartItemRepository cartItemRepository;
 
     @Autowired
     private CartService cartService;
@@ -73,14 +77,21 @@ public class OrderServiceImpl implements OrderService{
         // Get items from the cart into order items
         List<CartItem> cartItems = cart.getCartItems();
         if (cartItems.isEmpty()) {
-            throw new APIException("Cart is emspty");
+            throw new APIException("Cart is empty");
         }
 
         List<OrderItem> orderItems = new ArrayList<>();
         for(CartItem cartItem : cartItems) {
             OrderItem orderItem = new OrderItem();
-            orderItem.setPerformance(cartItem.getPerformance());
-            orderItem.setQuantity(cartItem.getQuantity());
+
+            if(cartItem.getPerformanceSeat().getStatus().equals(PerformanceSeatStatus.AVAILABLE)
+                    || cartItem.getPerformanceSeat().getHeldUntil().isBefore(LocalDateTime.now())
+                    || !cartItem.getPerformanceSeat().getHeldByCartId().equals(cart.getCartId())) {
+                throw new APIException("Molim da ponovo dodate sjedalo u košaricu!");
+            }
+
+            orderItem.setPerformanceSeat(cartItem.getPerformanceSeat());
+
             orderItem.setDiscount(cartItem.getDiscount());
             orderItem.setOrderedPerformancePrice(cartItem.getPerformancePrice());
             orderItem.setOrder(savedOrder);
@@ -89,24 +100,38 @@ public class OrderServiceImpl implements OrderService{
 
         orderItems = orderItemRepository.saveAll(orderItems);
 
+
         // Update products stock
         cart.getCartItems().forEach(item -> {
-//            int quantity = item.getQuantity();
-//            Performance performance = item.getPerformance();
-//            performance.setQuantity(performance.getQuantity() - quantity);
-//            performanceRepository.save(performance);
+//
+            PerformanceSeat performanceSeat = item.getPerformanceSeat();
+
+            performanceSeat.setStatus(PerformanceSeatStatus.SOLD);
+
+            performanceseatRepository.save(performanceSeat);
 
             // Clear the cart
-            cartService.deletePerformanceFromCart(cart.getCartId(), item.getPerformance().getPerformanceId());
+            cartService.deletePerformanceFromCart(cart.getCartId(), item.getPerformanceSeat().getPerformanceSeatId());
         });
 
-        // Send back the order summary
+      // Send back the order summary
         OrderDTO orderDTO = modelMapper.map(savedOrder, OrderDTO.class);
-        orderItems.forEach(item ->
-                orderDTO.getOrderItems().add(
-                        modelMapper.map(item, OrderItemDTO.class)
-                ));
+
         orderDTO.setAddressId(addressId);
+
+        List<OrderItemDTO> itemDTOs = cart.getCartItems().stream()
+                .map(ci -> {
+                    OrderItemDTO dto = new OrderItemDTO();
+                    dto.setPerformanceName(ci.getPerformanceSeat().getPerformance().getPerformanceName());
+                    dto.setRowLabel(ci.getPerformanceSeat().getSeat().getRowLabel());
+                    dto.setSection(ci.getPerformanceSeat().getSeat().getSection());
+                    dto.setOrderedPerformancePrice(ci.getPerformancePrice());
+                    dto.setDiscount(ci.getDiscount());
+                    return dto;
+                })
+                .toList();
+
+        orderDTO.setOrderItems(itemDTOs);
 
         return orderDTO;
     }

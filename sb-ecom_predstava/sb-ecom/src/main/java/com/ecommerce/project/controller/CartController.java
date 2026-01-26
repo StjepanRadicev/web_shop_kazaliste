@@ -25,10 +25,9 @@ public class CartController {
     @Autowired
     AuthUtil authUtil;
 
-    @PostMapping("/carts/performances/{performanceId}/quantity/{quantity}")
-    public ResponseEntity<CartDTO> addProductToCart(@PathVariable Long performanceId,
-                                                    @PathVariable Integer quantity) {
-        CartDTO cartDTO = cartService.addPerformanceToCart(performanceId, quantity);
+    @PostMapping("/carts/performances/{performanceSeatId}")
+    public ResponseEntity<CartDTO> addSeatToCart(@PathVariable Long performanceSeatId) {
+        CartDTO cartDTO = cartService.addSeatToCart(performanceSeatId);
 
         return new ResponseEntity<CartDTO>(cartDTO, HttpStatus.CREATED);
     }

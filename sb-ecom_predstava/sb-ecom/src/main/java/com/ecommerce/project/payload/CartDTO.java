@@ -14,5 +14,5 @@ public class CartDTO {
 
     private Long cartId;
     private Double totalPrice = 0.0;
-    private List<PerformanceDTO> performances = new ArrayList<>();
+    private List<PerformanceSeatDTO> performances = new ArrayList<>();
 }

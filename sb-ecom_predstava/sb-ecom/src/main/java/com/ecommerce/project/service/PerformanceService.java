@@ -18,7 +18,7 @@ public interface PerformanceService {
 
     PerformanceDTO updatePerformance(PerformanceDTO performanceDTO, Long performanceId);
 
-    PerformanceDTO addPerformance(Long showId, @Valid PerformanceDTO performanceDTO);
+    PerformanceDTO addPerformance(Long showId, Long hallId, @Valid PerformanceDTO performanceDTO);
 
     PerformanceDTO patchedUpdatePerformance(Long performanceId, Map<String, Object> patchPayLoad);
 

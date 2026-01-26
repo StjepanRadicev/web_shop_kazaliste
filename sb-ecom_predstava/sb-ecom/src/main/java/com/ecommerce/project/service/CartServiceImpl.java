@@ -2,13 +2,8 @@ package com.ecommerce.project.service;
 
 import com.ecommerce.project.exception.APIException;
 import com.ecommerce.project.exception.ResourceNotFoundException;
-import com.ecommerce.project.model.Cart;
-import com.ecommerce.project.model.CartItem;
-import com.ecommerce.project.model.Order;
-import com.ecommerce.project.model.Performance;
-import com.ecommerce.project.payload.CartDTO;
-import com.ecommerce.project.payload.CartItemDTO;
-import com.ecommerce.project.payload.PerformanceDTO;
+import com.ecommerce.project.model.*;
+import com.ecommerce.project.payload.*;
 import com.ecommerce.project.repositories.*;
 import com.ecommerce.project.util.AuthUtil;
 import org.modelmapper.ModelMapper;
@@ -16,9 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 public class CartServiceImpl implements CartService{
@@ -44,72 +39,74 @@ public class CartServiceImpl implements CartService{
     @Autowired
     OrderItemRepository orderItemRepository;
 
+    @Autowired
+    PerformanceSeatRepository performanceSeatRepository;
 
 
-
-    @Override
     @Transactional
-    public CartDTO addPerformanceToCart(Long performanceId, Integer quantity) {
-
+    @Override
+    public CartDTO addSeatToCart(Long performanceSeatId) {
 
         // Find existing cart or create one
         Cart cart = createCart();
 
-        // Retrieve Product Details
-        Performance performance = performanceRepository.findByIdForUpdate(performanceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Performance", "performanceId", performanceId));
+        PerformanceSeat performanceSeat = performanceSeatRepository.findByIdForUpdate(performanceSeatId)
+                .orElseThrow(() -> new RuntimeException("PerformanceSeat not found"));
 
 
-        int performanceQuantity = performanceAvailabilityService.getAvailability(performance,performanceId);
-
-        // Perform Validations
-        CartItem cartItem = cartItemRepository.findCartItemByPerformanceIdAndCartId(cart.getCartId(), performanceId);
-
-        if (cartItem != null) {
-            throw new APIException("Performance " + performance.getPerformanceName() + " already exists in the cart.");
+        // if  HELD still exists but its same cart => idempotentno (ne dupliraj)
+        if (performanceSeat.getStatus() == PerformanceSeatStatus.HELD
+                && cart.getCartId().equals(performanceSeat.getHeldByCartId())) {
+            throw  new APIException("Performance seat already exist in the cart");
         }
 
-        if (performanceQuantity == 0) {
-            throw new APIException(performance.getPerformanceName() + " is not available");
+        // expired hold => release
+        if (performanceSeat.getStatus() == PerformanceSeatStatus.HELD
+                && performanceSeat.getHeldUntil() != null
+                && performanceSeat.getHeldUntil().isBefore(LocalDateTime.now())) {
+            performanceSeat.setStatus(PerformanceSeatStatus.AVAILABLE);
+            performanceSeat.setHeldUntil(null);
+            performanceSeat.setHeldByCartId(null);
         }
 
-        if (performanceQuantity < quantity) {
-            throw new APIException("Please, make an order of the " + performance.getPerformanceName()
-            + " less than or equal to the quantity " + performanceQuantity + ".");
+        if (performanceSeat.getStatus() != PerformanceSeatStatus.AVAILABLE) {
+            throw new APIException("Seat not available");
         }
 
+
+        // 1) hold in base
+        performanceSeat.setStatus(PerformanceSeatStatus.HELD);
+        performanceSeat.setHeldByCartId(cart.getCartId());
+        performanceSeat.setHeldUntil(LocalDateTime.now().plusMinutes(10));
+
+        performanceSeatRepository.save(performanceSeat);
 
 
         // Create Cart Item
-        CartItem newCartItem = new CartItem();
-        newCartItem.setPerformance(performance);
-        newCartItem.setCart(cart);
-        newCartItem.setQuantity(quantity);
-        newCartItem.setDiscount(performance.getDiscount());
-        newCartItem.setPerformancePrice(performance.getSpecialPrice());
+        CartItem cartItem = new CartItem();
+        cartItem.setCart(cart);
+        cartItem.setDiscount(performanceSeat.getPerformance().getDiscount());
+        cartItem.setPerformanceSeat(performanceSeat);
+        cartItem.setPerformancePrice(performanceSeat.getPrice());
+        cartItemRepository.save(cartItem);
 
-        // Save Cart Item
-        cartItemRepository.save(newCartItem);
-
-
-        //performance.setQuantity(performance.getQuantity() - quantity);
-
-        cart.setTotalPrice(cart.getTotalPrice() + (performance.getSpecialPrice() * quantity));
+        cart.setTotalPrice(cart.getTotalPrice() + performanceSeat.getPrice());
 
         cartRepository.save(cart);
 
         // Return updated cart
         CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
 
-        List<PerformanceDTO> performances = cart.getCartItems().stream()
-                .map(item -> {
-                    PerformanceDTO dto = modelMapper.map(item.getPerformance(), PerformanceDTO.class);
-                    dto.setQuantityInCart(item.getQuantity());
+        List<PerformanceSeatDTO> performanceSeatDTOS = cart.getCartItems().stream()
+                .map(item ->{
+                    PerformanceSeatDTO dto = modelMapper.map(item.getPerformanceSeat(), PerformanceSeatDTO.class );
+                    dto.setRowLabel(item.getPerformanceSeat().getSeat().getRowLabel());
+                    dto.setSection(item.getPerformanceSeat().getSeat().getSection());
                     return dto;
                 })
                 .collect(Collectors.toList());
 
-        cartDTO.setPerformances(performances);
+        cartDTO.setPerformances(performanceSeatDTOS);
         return cartDTO;
     }
 
@@ -125,11 +122,12 @@ public class CartServiceImpl implements CartService{
         List<CartDTO> cartDTOs = carts.stream().map(cart -> {
             CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
 
-            List<PerformanceDTO> performances = cart.getCartItems().stream()
+            List<PerformanceSeatDTO> performances = cart.getCartItems().stream()
                     .map(item -> {
-                        PerformanceDTO performanceDTO = modelMapper.map(item.getPerformance(), PerformanceDTO.class);
-                        performanceDTO.setQuantityInCart(item.getQuantity()); // količina u korpi
-                        return performanceDTO;
+                        PerformanceSeatDTO performanceSeatDTO = modelMapper.map(item.getPerformanceSeat(), PerformanceSeatDTO.class);
+                        performanceSeatDTO.setRowLabel(item.getPerformanceSeat().getSeat().getRowLabel());
+                        performanceSeatDTO.setSection(item.getPerformanceSeat().getSeat().getSection());
+                        return performanceSeatDTO;
                     })
                     .collect(Collectors.toList());
 
@@ -142,6 +140,7 @@ public class CartServiceImpl implements CartService{
 
     @Override
     public CartDTO getCart(String emailId, Long cartId) {
+
         Cart cart = cartRepository.findCartByEmailAndCartId(emailId, cartId);
 
         if (cart == null) {
@@ -149,142 +148,57 @@ public class CartServiceImpl implements CartService{
         }
         CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
 
-        List<PerformanceDTO> products = cart.getCartItems().stream()
+        List<PerformanceSeatDTO> performances = cart.getCartItems().stream()
                 .map(item -> {
-                    PerformanceDTO productDTO = modelMapper.map(item.getPerformance(), PerformanceDTO.class);
-                    productDTO.setQuantityInCart(item.getQuantity()); // količina u korpi
-                    return productDTO;
+                    PerformanceSeatDTO performanceSeatDTO = modelMapper.map(item.getPerformanceSeat(), PerformanceSeatDTO.class);
+                    performanceSeatDTO.setRowLabel(item.getPerformanceSeat().getSeat().getRowLabel());
+                    performanceSeatDTO.setSection(item.getPerformanceSeat().getSeat().getSection());
+                    return performanceSeatDTO;
                 })
                 .collect(Collectors.toList());
 
-        cartDTO.setPerformances(products);
+        cartDTO.setPerformances(performances);
 
         return cartDTO;
     }
 
-    @Transactional
     @Override
     public CartDTO updatePerformanceQuantityInCart(Long performanceId, Integer quantity) {
-
-
-        String emailId = authUtil.loggedInEmail();
-        Cart userCart = cartRepository.findCartByEmail(emailId);
-        Long cartId = userCart.getCartId();
-
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart", "cartId", cartId));
-
-        Performance performance = performanceRepository.findById(performanceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Performance", "performanceId", performanceId));
-
-        int performanceQuantity = performanceAvailabilityService.getAvailability(performance, performanceId);
-
-        CartItem cartItem = cartItemRepository.findCartItemByPerformanceIdAndCartId(cartId, performanceId);
-        if (cartItem == null) {
-            throw new APIException("Performance " + performance.getPerformanceName() + " not available in the cart!");
-        }
-
-        // Calculate new quantity
-        int newQuantity = cartItem.getQuantity() + quantity;
-
-        // Validation to prevent negative quantities
-        if(newQuantity < 0) {
-            throw new APIException("The resulting quantity cannot be negative");
-        }
-
-        if (quantity > 0) {
-            if (performanceQuantity == 0) {
-                throw new APIException(performance.getPerformanceName() + " is not available");
-            }
-
-            if (performanceQuantity < quantity) {
-                throw new APIException("Please, make an order of the " + performance.getPerformanceName()
-                        + " less than or equal to the quantity " + performanceQuantity + ".");
-            }
-        }
-
-
-        if ( newQuantity == 0) {
-            deletePerformanceFromCart(cartId, performanceId);
-        } else {
-
-            cartItem.setPerformancePrice(performance.getSpecialPrice());
-            cartItem.setQuantity(cartItem.getQuantity() + quantity);
-            cartItem.setDiscount(performance.getDiscount());
-            cart.setTotalPrice(cart.getTotalPrice() + (cartItem.getPerformancePrice() * quantity));
-
-            //performance.setQuantity(performance.getQuantity() - quantity);
-
-            cartRepository.save(cart);
-            CartItem updatedItem = cartItemRepository.save(cartItem);
-        }
-
-
-
-        CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
-
-        List<PerformanceDTO> products = cart.getCartItems().stream()
-                .map(item -> {
-                    PerformanceDTO productDTO = modelMapper.map(item.getPerformance(), PerformanceDTO.class);
-                    productDTO.setQuantityInCart(item.getQuantity()); // količina u korpi
-                    return productDTO;
-                })
-                .collect(Collectors.toList());
-
-        cartDTO.setPerformances(products);
-
-        return cartDTO;
+        return null;
     }
 
     @Transactional
     @Override
-    public String deletePerformanceFromCart(Long cartId, Long performanceId) {
+    public String deletePerformanceFromCart(Long cartId, Long performanceSeatId) {
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart", "cartId", cartId));
 
-        CartItem cartItem = cartItemRepository.findCartItemByPerformanceIdAndCartId(cartId, performanceId);
+        CartItem cartItem = cartItemRepository.findCartItemByPerformanceSeatIdAndCartId(cartId, performanceSeatId);
 
-        Performance performance = performanceRepository.findById(performanceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Performance", "performance", performanceId));
+        PerformanceSeat performanceSeat = performanceSeatRepository.findById(performanceSeatId)
+                .orElseThrow(() -> new ResourceNotFoundException("PerformanceSeat", "performanceSeatId", performanceSeatId));
 
         if (cartItem == null) {
-            throw new ResourceNotFoundException("Performance", "performanceId", performanceId);
+            throw new ResourceNotFoundException("PerformanceSeat", "performanceSeatId", performanceSeatId);
         }
 
-        cart.setTotalPrice((cart.getTotalPrice() -
-                (cartItem.getPerformancePrice()) * cartItem.getQuantity()));
+        cart.setTotalPrice(cart.getTotalPrice() - cartItem.getPerformancePrice() );
 
+        cartItemRepository.deleteCartItemByPerformanceSeatIdAndCartId(cartId, performanceSeatId);
 
-        //performance.setQuantity(performance.getQuantity() + cartItem.getQuantity());
+        if(performanceSeat.getStatus().equals(PerformanceSeatStatus.HELD)) {
+            performanceSeat.setStatus(PerformanceSeatStatus.AVAILABLE);
+            performanceSeat.setHeldByCartId(null);
+            performanceSeat.setHeldUntil(null);
+        }
 
-        cartItemRepository.deleteCartItemByPerformanceIdAndCartId(cartId, performanceId);
+        performanceSeatRepository.save(performanceSeat);
 
-        return "Product " + cartItem.getPerformance().getPerformanceName() + " removed from the cart.";
+        return "PerformanceSeat " + cartItem.getPerformanceSeat().getSeat() + " removed from the cart.";
     }
 
     @Override
     public void updatePerformanceInCarts(Long cartId, Long performanceId) {
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart", "cartId", cartId));
-
-        Performance performance = performanceRepository.findById(performanceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Performance", "performanceId", performanceId));
-
-
-        CartItem cartItem = cartItemRepository.findCartItemByPerformanceIdAndCartId(cartId, performanceId);
-
-        if (cartItem == null) {
-            throw new APIException("Performance " + performance.getPerformanceName() + " not available in the cart!!!");
-        }
-
-        double cartPrice = cart.getTotalPrice() -
-                (cartItem.getPerformancePrice() * cartItem.getQuantity());
-
-        cartItem.setPerformancePrice(performance.getSpecialPrice());
-
-        cart.setTotalPrice(cartPrice + (cartItem.getPerformancePrice() * cartItem.getQuantity()));
-
-        cartItemRepository.save(cartItem);
 
     }
 
@@ -300,7 +214,18 @@ public class CartServiceImpl implements CartService{
 
         return cartRepository.save(cart);
     }
+
+    @Transactional
+    public void cleanupExpiredHeldItems() {
+        LocalDateTime now = LocalDateTime.now();
+        var expired = cartItemRepository.findExpiredHeldItems(now);
+
+        for (var e : expired) {
+            deletePerformanceFromCart(e.getCartId(), e.getPerformanceSeatId());
+        }
+    }
 }
+
 
 
 
