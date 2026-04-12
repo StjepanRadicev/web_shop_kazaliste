@@ -15,12 +15,12 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
 
 
     @Query("""
-  select ci.cart.id as cartId,
-         ci.performanceSeat.performanceSeatId as performanceSeatId
-  from CartItem ci
-  where ci.performanceSeat.status = com.ecommerce.project.model.PerformanceSeatStatus.HELD
-    and ci.performanceSeat.heldUntil < :now
-    and ci.performanceSeat.heldByCartId = ci.cart.id
+        select ci.cart.id as cartId,
+        ci.performanceSeat.performanceSeatId as performanceSeatId
+        from CartItem ci
+        where ci.performanceSeat.status = com.ecommerce.project.model.PerformanceSeatStatus.HELD
+        and ci.performanceSeat.heldUntil < :now
+        and ci.performanceSeat.heldByCartId = ci.cart.id
   """)
     List<ExpiredHeldItem> findExpiredHeldItems(@Param("now") LocalDateTime now);
 

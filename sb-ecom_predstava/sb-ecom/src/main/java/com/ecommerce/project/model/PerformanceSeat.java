@@ -37,7 +37,5 @@ public class PerformanceSeat {
 
     private Long heldByCartId;
 
-
     private double price;
-
 }

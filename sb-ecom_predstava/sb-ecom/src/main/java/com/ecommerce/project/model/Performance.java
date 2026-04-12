@@ -24,7 +24,7 @@ public class Performance {
     private Long performanceId;
 
     @Column(unique = true)
-    @NotBlank
+    //@NotBlank
     private String performanceName;
 
     @ManyToOne(fetch = FetchType.LAZY, optional=false)
@@ -35,7 +35,9 @@ public class Performance {
 
     private String description;
 
-    private Integer quantity;
+    private Integer totalSeats;
+
+    private Integer availableSeats;
 
     private double price;
 
@@ -44,6 +46,10 @@ public class Performance {
     private double specialPrice;
 
     private LocalDateTime localDateTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable=false)
+    private PerformanceStatus status;
 
     @Version
     private long version;

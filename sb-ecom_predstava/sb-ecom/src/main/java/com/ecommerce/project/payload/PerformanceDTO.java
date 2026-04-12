@@ -1,5 +1,6 @@
 package com.ecommerce.project.payload;
 
+import com.ecommerce.project.model.PerformanceStatus;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,17 +16,19 @@ public class PerformanceDTO {
 
     private Long performanceId;
 
-    @NotBlank(message = "Naziv proizvoda je obavezan.")
-    @Size(max = 100, message = "Naziv ne smije imati više od 100 znakova.")
+//    @NotBlank(message = "Naziv proizvoda je obavezan.")
+//    @Size(max = 100, message = "Naziv ne smije imati više od 100 znakova.")
     private String performanceName;
 
     @URL(message = "Slika mora biti ispravna URL adresa.")
     @Size(max = 255, message = "URL slike ne smije biti duži od 255 znakova.")
     private String image;
 
-    @NotNull(message = "Količina je obavezna.")
-    @Min(value = 0, message = "Količina ne može biti manja od 0.")
-    private Integer quantity;
+//    @NotNull(message = "Količina je obavezna.")
+//    @Min(value = 0, message = "Količina ne može biti manja od 0.")
+    private Integer totalSeats;
+
+    private Integer availableSeats;
 
     private Integer quantityInCart;
 
@@ -52,6 +55,8 @@ public class PerformanceDTO {
     private String categoryName;
 
     private String showName;
+
+    private PerformanceStatus status;
 
 
 

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,9 +23,17 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long>,
 
     Performance findByPerformanceNameIgnoreCase(String performanceName);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "5000"))
-    @Query("SELECT p FROM Performance p WHERE p.performanceId = :id")
-    Optional<Performance> findByIdForUpdate( Long id);
-//@Param("id")
+    @Query(value = """
+            SELECT * FROM performance WHERE local_date_time > NOW()""", nativeQuery = true)
+    Performance findActivePerformance();
+
+    @Modifying
+    @Query("""
+        update Performance p
+        set p.status = 'FINISHED'
+        where p.status = 'PUBLISHED'
+          and p.localDateTime < :now
+    """)
+    int markFinished(@Param("now") LocalDateTime now);
+
 }

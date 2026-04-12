@@ -1,5 +1,6 @@
 package com.ecommerce.project.payload;
 
+import com.ecommerce.project.model.PerformanceSeat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,4 +16,5 @@ public class CartItemDTO {
     private Integer quantity;
     private Double discount;
     private Double performancePrice;
+    private PerformanceSeat performanceSeat;
 }

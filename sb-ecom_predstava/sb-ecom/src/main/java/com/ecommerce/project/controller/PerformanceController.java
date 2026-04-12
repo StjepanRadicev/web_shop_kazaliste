@@ -12,7 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Map;
 
 @RestController
@@ -93,6 +95,14 @@ public class PerformanceController {
         PerformanceDTO performanceDTO = performanceService.deletePerformance(performanceId);
 
         return new ResponseEntity<PerformanceDTO>(performanceDTO, HttpStatus.OK);
+    }
+
+    @PutMapping("/performances/{performanceId}/image")
+    public ResponseEntity<PerformanceDTO> updatePerformanceImage(@PathVariable Long performanceId,
+                                                                 @RequestParam("image")MultipartFile image) throws IOException {
+
+        PerformanceDTO updatedPerformance = performanceService.updatePerformanceImage(performanceId, image);
+        return new ResponseEntity<>(updatedPerformance, HttpStatus.OK);
     }
 }
 

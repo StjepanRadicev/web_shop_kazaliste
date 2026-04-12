@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.criteria.Join;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,14 +23,16 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @Service
@@ -68,6 +71,12 @@ public class PerformanceServiceImpl implements PerformanceService {
     @Autowired
     private ObjectMapper objectMapper;
 
+//    @Value("${project.image}")
+//    private String path;
+
+//    @Value("${image.base.url}")
+//    private String imageBaseUrl;
+
 
     @Transactional
     @Override
@@ -83,16 +92,8 @@ public class PerformanceServiceImpl implements PerformanceService {
         Performance savedPerformanceByName = performanceRepository.findByPerformanceNameIgnoreCase(performance.getPerformanceName());
 
         if (savedPerformanceByName != null  ) {
-            throw new APIException("Product with the name " + performance.getPerformanceName() + " already exists !!!");
+            throw new APIException("Performance with the name " + performance.getPerformanceName() + " already exists !!!");
         }
-
-
-        performance.setImage("default.png");
-        performance.setShow(show);
-        performance.setHall(hall);
-        double specialPrice = performance.getPrice() - ((performance.getDiscount() * 0.01) * performance.getPrice());
-        performance.setSpecialPrice(specialPrice);
-        Performance savedPerformance = performanceRepository.save(performance);
 
         // 2)  sva sjedala dvorane
         // Long hallId = savedPerformance.getHall().getHallId();
@@ -101,6 +102,21 @@ public class PerformanceServiceImpl implements PerformanceService {
         if (seats.isEmpty()) {
             throw new IllegalStateException("Hall has no seats. Create seats first.");
         }
+
+        Integer seatNumber =  seats.size();
+
+        // 1)
+        performance.setImage("default.png");
+        performance.setShow(show);
+        performance.setHall(hall);
+        performance.setTotalSeats(seatNumber);
+        performance.setAvailableSeats(seatNumber);
+        performance.setStatus(PerformanceStatus.PUBLISHED);
+        double specialPrice = performance.getPrice() - ((performance.getDiscount() * 0.01) * performance.getPrice());
+        performance.setSpecialPrice(specialPrice);
+        Performance savedPerformance = performanceRepository.save(performance);
+
+
 
 
         // 3) PerformanceSeat za svako sjedalo
@@ -217,6 +233,14 @@ public class PerformanceServiceImpl implements PerformanceService {
                 predicates.add( cb.equal(showJoin.get("showId"), showId));
             }
 
+            predicates.add(
+                    cb.greaterThan(root.get("localDateTime"), cb.currentTimestamp())
+            );
+
+            predicates.add(
+                    cb.equal(root.get("status"), PerformanceStatus.PUBLISHED)
+            );
+
             // sort manual
             SortHelper.applySort(query, cb, root, sortBy, sortDir);
 
@@ -236,11 +260,10 @@ public class PerformanceServiceImpl implements PerformanceService {
         //List<Product> productList = productRepository.findAll( specification);
 
         List<PerformanceDTO> performanceDTOS = performanceList.stream()
-                .map(product -> {
-                    PerformanceDTO dto = modelMapper.map(product, PerformanceDTO.class);
-                    dto.setCategoryName(
-                            product.getShow().getCategory().getCategoryName()
-                    );
+                .map(performance -> {
+                    PerformanceDTO dto = modelMapper.map(performance, PerformanceDTO.class);
+                    dto.setCategoryName(performance.getShow().getCategory().getCategoryName());
+//                    dto.setImage(constructImageUrl(performance.getImage()));
                     return dto;
                 })
                 .toList();
@@ -257,6 +280,9 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     }
 
+//    private String constructImageUrl(String imageName) {
+//        return imageBaseUrl.endsWith("/") ? imageBaseUrl + imageName : imageBaseUrl + "/" + imageName;
+//    }
 
     @Override
     public PerformanceDTO updatePerformance(PerformanceDTO performanceDTO, Long performanceId) {
@@ -280,11 +306,11 @@ public class PerformanceServiceImpl implements PerformanceService {
 
             performanceFromDb.setShow(show);
         }
-        // Update the product info with the one in request body
+        // Update the performance info with the one in request body
 
         performanceFromDb.setPerformanceName(performance.getPerformanceName());
         performanceFromDb.setDescription(performance.getDescription());
-        performanceFromDb.setQuantity(performanceFromDb.getQuantity() + performance.getQuantity());
+        //performanceFromDb.setQuantity(performanceFromDb.getQuantity() + performance.getQuantity());
         performanceFromDb.setDiscount(performance.getDiscount());
         performanceFromDb.setPrice(performance.getPrice());
         double specialPrice = performance.getPrice() - ((performance.getDiscount() * 0.01) * performance.getPrice());
@@ -357,6 +383,49 @@ public class PerformanceServiceImpl implements PerformanceService {
         performanceRepository.delete(performanceFromDb);
 
         return modelMapper.map(performanceFromDb, PerformanceDTO.class);
+    }
+
+    @Override
+    public PerformanceDTO updatePerformanceImage(Long performanceId, MultipartFile image) throws IOException {
+        // Get the performance from DB
+        Performance performanceFromDB = performanceRepository.findById(performanceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Performance", "performanceId", performanceId));
+
+        // Upload image to server
+        // Get the file name of uploaded image
+        String path = "images/";
+        String fileName = uploadImage(path, image);
+
+        // Updating the new file name to the performance
+        performanceFromDB.setImage(fileName);
+
+        // Save updated performance
+        Performance updatedPerformance = performanceRepository.save(performanceFromDB);
+
+        // return DTO after mapping performance to DTO
+        return modelMapper.map(updatedPerformance, PerformanceDTO.class);
+    }
+
+    private String uploadImage(String path, MultipartFile file) throws IOException {
+        // File names of current / original file
+        String originalFileName = file.getOriginalFilename();
+
+        // Generate a unique file name
+        String randomId = UUID.randomUUID().toString();
+        String fileName = randomId.concat(originalFileName.substring(originalFileName.lastIndexOf('.')));
+        String filePath = path + File.separator + fileName;
+
+
+        // Check if path exist and create
+        File folder = new File(path);
+        if(!folder.exists())
+            folder.mkdir();
+
+        // Upload to server
+        Files.copy(file.getInputStream(), Paths.get(filePath));
+
+        // Returning file name
+        return fileName;
     }
 
     //method for patch update

@@ -101,7 +101,7 @@ public class OrderServiceImpl implements OrderService{
         orderItems = orderItemRepository.saveAll(orderItems);
 
 
-        // Update products stock
+        // Update performanceSeat Status
         cart.getCartItems().forEach(item -> {
 //
             PerformanceSeat performanceSeat = item.getPerformanceSeat();

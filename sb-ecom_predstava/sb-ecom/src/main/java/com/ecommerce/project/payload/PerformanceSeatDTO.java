@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PerformanceSeatDTO {
 
+    private Long performanceSeatId;
+
     private PerformanceSeatStatus status;
 
     private double price;
@@ -25,5 +27,7 @@ public class PerformanceSeatDTO {
     private Integer seatNumber;
 
     private String performanceName;
+
+    private String showName;
 }
 

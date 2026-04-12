@@ -3,7 +3,9 @@ package com.ecommerce.project.service;
 import com.ecommerce.project.payload.PerformanceDTO;
 import com.ecommerce.project.payload.PerformanceResponse;
 import jakarta.validation.Valid;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Map;
 
 public interface PerformanceService {
@@ -23,4 +25,6 @@ public interface PerformanceService {
     PerformanceDTO patchedUpdatePerformance(Long performanceId, Map<String, Object> patchPayLoad);
 
     PerformanceDTO deletePerformance(Long performanceId);
+
+    PerformanceDTO updatePerformanceImage(Long performanceId, MultipartFile image) throws IOException;
 }
