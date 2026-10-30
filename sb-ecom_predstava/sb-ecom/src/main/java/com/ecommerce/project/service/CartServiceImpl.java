@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -84,7 +85,9 @@ public class CartServiceImpl implements CartService{
             // 1) hold in base
             performanceSeat.setStatus(PerformanceSeatStatus.HELD);
             performanceSeat.setHeldByCartId(cart.getCartId());
-            performanceSeat.setHeldUntil(LocalDateTime.now().plusMinutes(4));
+            performanceSeat.setHeldUntil(
+                    LocalDateTime.now(ZoneOffset.UTC).plusMinutes(4)
+            );
 
             performanceSeatRepository.save(performanceSeat);
 
@@ -362,7 +365,7 @@ public class CartServiceImpl implements CartService{
     @Transactional
     public void cleanupExpiredHeldItems() {
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
         var expired = cartItemRepository.findExpiredHeldItems(now);
 
