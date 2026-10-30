@@ -84,7 +84,7 @@ public class CartServiceImpl implements CartService{
             // 1) hold in base
             performanceSeat.setStatus(PerformanceSeatStatus.HELD);
             performanceSeat.setHeldByCartId(cart.getCartId());
-            performanceSeat.setHeldUntil(LocalDateTime.now().plusMinutes(2));
+            performanceSeat.setHeldUntil(LocalDateTime.now().plusMinutes(4));
 
             performanceSeatRepository.save(performanceSeat);
 
