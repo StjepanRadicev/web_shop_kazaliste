@@ -35,6 +35,12 @@ public class JwtUtils {
     @Value("${spring.ecom.app.jwtCookieName}")
     private String jwtCookie;
 
+    @Value("${app.cookie.secure}")
+    private boolean cookieSecure;
+
+    @Value("${app.cookie.same-site}")
+    private String cookieSameSite;
+
      //Getting JWT From Header
     public String getJwtFromHeader(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
@@ -48,7 +54,6 @@ public class JwtUtils {
     public String getJwtFromCookies(HttpServletRequest request) {
         Cookie cookie  = WebUtils.getCookie(request, jwtCookie);
         if (cookie != null) {
-            System.out.println("Cookie: " + cookie.getValue());
             return cookie.getValue();
         } else {
             return null;
@@ -61,17 +66,20 @@ public class JwtUtils {
                 .path("/api")
                 .maxAge(60 * 60 * 24) // how long browser send cookie
                 .httpOnly(true) // javaScript can't read cookie, protect of XSS
-                .secure(false) //only through https
-                .sameSite("Lax")
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .build();
         return  cookie;
     }
 
     public ResponseCookie getCleanJwtCookie() {
-        ResponseCookie cookie = ResponseCookie.from(jwtCookie, null)
+        return ResponseCookie.from(jwtCookie, "")
                 .path("/api")
+                .maxAge(0)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .build();
-        return  cookie;
     }
 
 
