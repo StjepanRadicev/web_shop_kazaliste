@@ -1,11 +1,13 @@
 package com.ecommerce.project.service;
 
+import com.ecommerce.project.exception.APIException;
 import com.ecommerce.project.exception.ResourceNotFoundException;
 import com.ecommerce.project.model.Address;
 import com.ecommerce.project.model.User;
 import com.ecommerce.project.payload.AddressDTO;
 import com.ecommerce.project.payload.AddressPatchRequest;
 import com.ecommerce.project.repositories.AddressRepository;
+import com.ecommerce.project.repositories.OrderRepository;
 import com.ecommerce.project.repositories.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.modelmapper.ModelMapper;
@@ -29,6 +31,9 @@ public class AddressServiceImpl implements AddressService{
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
 
     @Override
@@ -110,7 +115,17 @@ public class AddressServiceImpl implements AddressService{
         Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new ResourceNotFoundException("Address", "addressId", addressId));
 
+        boolean addressInUse = orderRepository.existsByAddress_AddressId(addressId);
+
+        if (addressInUse) {
+            throw new APIException(
+                    "Adresu nije moguće obrisati jer je povezana s postojećom narudžbom."
+            );
+        }
+
         User user = address.getUser();
+
+
         user.getAddresses().removeIf(address1 -> address1.getAddressId().equals(addressId));
         userRepository.save(user);
 

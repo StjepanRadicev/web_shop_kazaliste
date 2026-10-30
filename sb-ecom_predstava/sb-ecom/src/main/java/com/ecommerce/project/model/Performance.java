@@ -23,17 +23,15 @@ public class Performance {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long performanceId;
 
-    @Column(unique = true)
-    //@NotBlank
-    private String performanceName;
+//    @Column(unique = true)
+//    //@NotBlank
+//    private String performanceName;
 
     @ManyToOne(fetch = FetchType.LAZY, optional=false)
     @JoinColumn(name="hall_id", nullable=false)
     private Hall hall;
 
     private String image;
-
-    private String description;
 
     private Integer totalSeats;
 

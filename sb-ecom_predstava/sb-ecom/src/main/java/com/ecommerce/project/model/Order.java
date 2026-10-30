@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +29,7 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = { CascadeType.PERSIST, CascadeType.MERGE})
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    private LocalDate orderDate;
+    private LocalDateTime orderDate;
 
     @OneToOne
     @JoinColumn(name = "payment_id")

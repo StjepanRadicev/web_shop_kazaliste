@@ -13,6 +13,7 @@ import com.ecommerce.project.repositories.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.criteria.Join;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,8 +26,12 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,46 +41,51 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 @Service
+@RequiredArgsConstructor
 public class PerformanceServiceImpl implements PerformanceService {
 
-    @Autowired
-    private CartItemRepository cartItemRepository;
 
-    @Autowired
-    private  CartService cartService;
+    private final CartItemRepository cartItemRepository;
 
-    @Autowired
-    private CartRepository cartRepository;
 
-    @Autowired
-    private PerformanceRepository performanceRepository;
+    private final CartService cartService;
 
-    @Autowired
-    private CategoryRepository categoryRepository;
 
-    @Autowired
-    private ShowRepository showRepository;
+    private final CartRepository cartRepository;
 
-    @Autowired
-    private SeatRepository seatRepository;
 
-    @Autowired
-    private PerformanceSeatRepository performanceSeatRepository;
+    private final PerformanceRepository performanceRepository;
 
-    @Autowired
-    private HallRepository hallRepository;
 
-    @Autowired
-    private ModelMapper modelMapper;
+    private final CategoryRepository categoryRepository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
 
-//    @Value("${project.image}")
-//    private String path;
+    private final ShowRepository showRepository;
 
-//    @Value("${image.base.url}")
-//    private String imageBaseUrl;
+
+    private final SeatRepository seatRepository;
+
+
+    private final PerformanceSeatRepository performanceSeatRepository;
+
+
+    private final HallRepository hallRepository;
+
+
+    private final  ModelMapper modelMapper;
+
+
+    private final ObjectMapper objectMapper;
+
+
+    private final FileService fileService;
+
+
+    @Value("${project.image}")
+    private String path;
+
+    @Value("${image.base.url}")
+    private String imageBaseUrl;
 
 
     @Transactional
@@ -89,18 +99,36 @@ public class PerformanceServiceImpl implements PerformanceService {
 
         Performance performance = modelMapper.map(performanceDTO, Performance.class);
 
-        Performance savedPerformanceByName = performanceRepository.findByPerformanceNameIgnoreCase(performance.getPerformanceName());
+        LocalDateTime newStart = performance.getLocalDateTime();
 
-        if (savedPerformanceByName != null  ) {
-            throw new APIException("Performance with the name " + performance.getPerformanceName() + " already exists !!!");
+
+        if (!newStart.isAfter(LocalDateTime.now())) {
+            throw new APIException(
+                    "Vrijeme početka izvedbe mora biti u budućnosti."
+            );
         }
+
+        LocalDateTime newEnd = newStart.plusMinutes(show.getDuration());
+
+        List<Performance> overlapping = performanceRepository.findOverlappingPerformances(newStart, newEnd, hallId);
+
+        if (!overlapping.isEmpty()) {
+            String message = overlapping.stream()
+                    .map(p -> "Predstava: " + p.getShow().getShowName() +
+                            ", početak: " + p.getLocalDateTime())
+                    .collect(Collectors.joining(" | "));
+
+            throw new APIException("Termin se preklapa s postojećim predstavama: " + message);
+        }
+
 
         // 2)  sva sjedala dvorane
         // Long hallId = savedPerformance.getHall().getHallId();
         List<Seat> seats = seatRepository.findByHall_HallId(hallId);
 
         if (seats.isEmpty()) {
-            throw new IllegalStateException("Hall has no seats. Create seats first.");
+            //throw new IllegalStateException("Hall has no seats. Create seats first.");
+            throw new APIException("Hall has no seats. Create seats first.");
         }
 
         Integer seatNumber =  seats.size();
@@ -111,8 +139,15 @@ public class PerformanceServiceImpl implements PerformanceService {
         performance.setHall(hall);
         performance.setTotalSeats(seatNumber);
         performance.setAvailableSeats(seatNumber);
-        performance.setStatus(PerformanceStatus.PUBLISHED);
-        double specialPrice = performance.getPrice() - ((performance.getDiscount() * 0.01) * performance.getPrice());
+        performance.setStatus(PerformanceStatus.DRAFT);
+
+        double specialPrice = performance.getPrice()
+                - ((performance.getDiscount() * 0.01) * performance.getPrice());
+
+        specialPrice = BigDecimal.valueOf(specialPrice)
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
+
         performance.setSpecialPrice(specialPrice);
         Performance savedPerformance = performanceRepository.save(performance);
 
@@ -127,7 +162,7 @@ public class PerformanceServiceImpl implements PerformanceService {
             ps.setStatus(PerformanceSeatStatus.AVAILABLE);
             ps.setHeldUntil(null);
             ps.setHeldByCartId(null);
-            ps.setPrice(savedPerformance.getPrice());
+            ps.setPrice(savedPerformance.getSpecialPrice());
             return ps;
         }).toList();
 
@@ -168,21 +203,7 @@ public class PerformanceServiceImpl implements PerformanceService {
 
 
 
-    @Override
-    public PerformanceResponse searchPerformanceByKeyword(String keyword) {
-        List<Performance> performances = performanceRepository.findByPerformanceNameContainingIgnoreCase(keyword);
 
-        if(performances.isEmpty()) {
-            throw new APIException("No Result");
-        }
-
-        List<PerformanceDTO> performanceDTOS = performances.stream()
-                .map(product -> modelMapper.map(product, PerformanceDTO.class)).toList();
-
-        PerformanceResponse performanceResponse = new PerformanceResponse();
-        performanceResponse.setContent(performanceDTOS);
-        return performanceResponse;
-    }
 
 
     @Override
@@ -215,9 +236,11 @@ public class PerformanceServiceImpl implements PerformanceService {
     }
 
     @Override
-    public PerformanceResponse getPerformancesByAll(Integer pageNumber, Integer pageSize, Long categoryId, Long showId, String sortBy, String sortDir) {
+    public PerformanceResponse getPerformancesByAll(Integer pageNumber, Integer pageSize, String category, String showId, String sortBy, String sortDir, String name) {
 
         SortValidator.validateSort(sortBy,sortDir);
+
+
 
         Specification<Performance> specification = (root, query, cb) ->{
             List<Predicate> predicates = new ArrayList<>();
@@ -225,8 +248,10 @@ public class PerformanceServiceImpl implements PerformanceService {
             Join<Performance,Show> showJoin = root.join("show");
             Join<Show,Category> categoryJoin = showJoin.join("category");
 
-            if (categoryId != null) {
-                predicates.add( cb.equal(categoryJoin.get("categoryId"), categoryId));
+            query.distinct(true);
+
+            if (category != null) {
+                predicates.add( cb.equal(categoryJoin.get("categoryName"), category));
             }
 
             if(showId != null) {
@@ -241,6 +266,14 @@ public class PerformanceServiceImpl implements PerformanceService {
                     cb.equal(root.get("status"), PerformanceStatus.PUBLISHED)
             );
 
+            if (name != null && !name.isBlank()) {
+                predicates.add(
+                        cb.like(
+                                cb.lower(showJoin.get("showName")),
+                                "%" + name.toLowerCase() + "%"
+                        )
+                );
+            }
             // sort manual
             SortHelper.applySort(query, cb, root, sortBy, sortDir);
 
@@ -256,6 +289,15 @@ public class PerformanceServiceImpl implements PerformanceService {
 
         List<Performance> performanceList = pageProducts.getContent();
 
+        int numberSeat = 0;
+
+        for(Performance performance : performanceList ) {
+            numberSeat = performanceSeatRepository.countSeatsByPerformanceIdAndStatus(performance.getPerformanceId(), PerformanceSeatStatus.AVAILABLE);
+
+            performance.setAvailableSeats(numberSeat);
+
+        }
+
 
         //List<Product> productList = productRepository.findAll( specification);
 
@@ -263,7 +305,8 @@ public class PerformanceServiceImpl implements PerformanceService {
                 .map(performance -> {
                     PerformanceDTO dto = modelMapper.map(performance, PerformanceDTO.class);
                     dto.setCategoryName(performance.getShow().getCategory().getCategoryName());
-//                    dto.setImage(constructImageUrl(performance.getImage()));
+                    dto.setImage(constructImageUrl(performance.getImage()));
+                    dto.setAvailableSeats(performance.getAvailableSeats());
                     return dto;
                 })
                 .toList();
@@ -280,63 +323,149 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     }
 
-//    private String constructImageUrl(String imageName) {
-//        return imageBaseUrl.endsWith("/") ? imageBaseUrl + imageName : imageBaseUrl + "/" + imageName;
-//    }
 
+
+    private String constructImageUrl(String imageName) {
+        return imageBaseUrl.endsWith("/") ? imageBaseUrl + imageName : imageBaseUrl + "/" + imageName;
+    }
+
+
+
+    @Transactional
     @Override
     public PerformanceDTO updatePerformance(PerformanceDTO performanceDTO, Long performanceId) {
         // Get the existing product from DB
         Performance performanceFromDb = performanceRepository.findById(performanceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", performanceId ));
 
+        // provjera jel izvedba završila
+        if (performanceFromDb.getStatus() == PerformanceStatus.FINISHED) {
+            throw new APIException(
+                    "Završenu izvedbu nije moguće ažurirati."
+            );
+        }
+
         Performance performance = modelMapper.map(performanceDTO, Performance.class);
 
-        Performance savedPerformanceByName = performanceRepository.findByPerformanceNameIgnoreCase(performance.getPerformanceName());
 
-        if (savedPerformanceByName != null) {
-            if (!savedPerformanceByName.getPerformanceId().equals(performanceId)) {
-                throw new APIException("Product with the name " + performance.getPerformanceName() + " already exists !!!");
-            }
+        Show show = performanceFromDb.getShow();
+
+        if (performanceDTO.getShowId() != null) {
+            show = showRepository.findById(performanceDTO.getShowId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException(
+                                    "Show", "showId", performanceDTO.getShowId()
+                            )
+                    );
         }
 
-        if(performanceDTO.getShowId() != null) {
-            Show show = showRepository.findById(performanceDTO.getShowId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Show", "showId", performanceDTO.getShowId()));
+        // provjera jel ima prodanih tiketa za izvedbu koju želimo ažurirati
+        boolean hasSoldTickets = performanceSeatRepository.existsByPerformance_PerformanceIdAndStatus(
+                        performanceId,
+                        PerformanceSeatStatus.SOLD
+        );
+        // provera što se želi ažurirati
+        boolean showChanged =
+                !performanceFromDb.getShow().getShowId()
+                        .equals(show.getShowId());
 
-            performanceFromDb.setShow(show);
+        boolean dateChanged =
+                !performanceFromDb.getLocalDateTime()
+                        .equals(performanceDTO.getLocalDateTime());
+
+        //provjera ako  ima prodanma bar jedna ulaznica za sada administrator ne može ništa mjenjati
+        boolean hasHeldSeats =
+                performanceSeatRepository.existsByPerformance_PerformanceIdAndStatus(
+                        performanceId,
+                        PerformanceSeatStatus.HELD
+                );
+
+        if (hasSoldTickets || hasHeldSeats) {
+            throw new APIException(
+                    "Izvedbu nije moguće ažurirati jer postoje prodane " +
+                            "ulaznice ili rezervirana sjedala."
+            );
         }
-        // Update the performance info with the one in request body
 
-        performanceFromDb.setPerformanceName(performance.getPerformanceName());
-        performanceFromDb.setDescription(performance.getDescription());
-        //performanceFromDb.setQuantity(performanceFromDb.getQuantity() + performance.getQuantity());
+
+
+        Hall hall = performanceFromDb.getHall();
+        LocalDateTime newStart = performance.getLocalDateTime();
+
+        if(newStart.isBefore(LocalDateTime.now() ) ) {
+            throw new APIException(
+                    "Vrijeme početka izvedbe mora biti u budućnosti."
+            );
+        }
+
+        LocalDateTime newEnd = newStart.plusMinutes(show.getDuration());
+
+        List<Performance> overlapping =
+                performanceRepository.findOverlappingPerformances(
+                        newStart, newEnd, hall.getHallId()
+                );
+
+        overlapping.removeIf(p ->
+                p.getPerformanceId().equals(performanceId)
+        );
+
+
+        if (!overlapping.isEmpty()) {
+            String message = overlapping.stream()
+                    .map(p -> "Predstava: " + p.getShow().getShowName() +
+                            ", početak: " + p.getLocalDateTime())
+                    .collect(Collectors.joining(" | "));
+
+            throw new APIException("Termin se preklapa s postojećim predstavama: " + message);
+        }
+
+
+        // provjera ststusa izvedbe
+
+        PerformanceStatus newStatus = performanceDTO.getStatus();
+
+        if (newStatus == PerformanceStatus.FINISHED ||
+                newStatus == PerformanceStatus.SOLD_OUT) {
+
+            throw new APIException(
+                    "Status FINISHED ili SOLD_OUT nije moguće ručno postaviti."
+            );
+        }
+
+        performanceFromDb.setShow(show);
         performanceFromDb.setDiscount(performance.getDiscount());
         performanceFromDb.setPrice(performance.getPrice());
-        double specialPrice = performance.getPrice() - ((performance.getDiscount() * 0.01) * performance.getPrice());
+
+
+        double specialPrice = performanceDTO.getPrice()
+                - ((performanceDTO.getDiscount() * 0.01)
+                * performanceDTO.getPrice());
+
+        specialPrice = BigDecimal.valueOf(specialPrice)
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
+
         performanceFromDb.setSpecialPrice(specialPrice);
 
+        // Ažuriranje cijene slobodnih sjedala
+        List<PerformanceSeat> availableSeats =
+                performanceSeatRepository.findByPerformance_PerformanceIdAndStatus(
+                        performanceId,
+                        PerformanceSeatStatus.AVAILABLE
+                );
+
+        for (PerformanceSeat seat : availableSeats) {
+            seat.setPrice(specialPrice);
+        }
+
+        performanceSeatRepository.saveAll(availableSeats);
+
+        performanceFromDb.setStatus(newStatus);
+
+
+        performanceFromDb.setLocalDateTime(performanceDTO.getLocalDateTime());
         // Save to database
         Performance savedPerformance = performanceRepository.save(performanceFromDb);
-
-        //List<Cart> carts = cartRepository.findCartsByPerformanceId(performanceId);
-
-//        List<CartDTO> cartDTOs = carts.stream().map(cart -> {
-//            CartDTO cartDTO = modelMapper.map(cart, CartDTO.class);
-//
-//            List<PerformanceDTO> performances = cart.getCartItems().stream()
-//                    .map(item -> {
-//                        PerformanceDTO performanceDTOs = modelMapper.map(item.getPerformanceSeat(), PerformanceDTO.class);
-//                        performanceDTO.setQuantityInCart(item.getQuantity()); // količina u korpi
-//                        return performanceDTOs;
-//                    })
-//                    .collect(Collectors.toList());
-//
-//            cartDTO.setPerformances(performances);
-//            return cartDTO;
-//        }).collect(Collectors.toList());
-//
-//        cartDTOs.forEach(cart -> cartService.updatePerformanceInCarts(cart.getCartId(), performanceId));
 
 
         PerformanceDTO dto = modelMapper.map(savedPerformance, PerformanceDTO.class);
@@ -353,12 +482,12 @@ public class PerformanceServiceImpl implements PerformanceService {
         // if exist product with same name
         String newPerformanceName = patchPayLoad.get("performanceName").toString();
 
-        if (newPerformanceName != null) {
-            Performance savedPerformanceByName = performanceRepository.findByPerformanceNameIgnoreCase(newPerformanceName);
-            if (savedPerformanceByName != null && !savedPerformanceByName.getPerformanceId().equals(performanceId)) {
-                throw new APIException("Performance with the name " + newPerformanceName + " already exists !");
-            }
-        }
+//        if (newPerformanceName != null) {
+//            Performance savedPerformanceByName = performanceRepository.findByPerformanceNameIgnoreCase(newPerformanceName);
+//            if (savedPerformanceByName != null && !savedPerformanceByName.getPerformanceId().equals(performanceId)) {
+//                throw new APIException("Performance with the name " + newPerformanceName + " already exists !");
+//            }
+//        }
 
         // if exists Id in JSON request body
         if(JsonPatchUtils.containsAnyIdKey(patchPayLoad)) {
@@ -393,8 +522,7 @@ public class PerformanceServiceImpl implements PerformanceService {
 
         // Upload image to server
         // Get the file name of uploaded image
-        String path = "images/";
-        String fileName = uploadImage(path, image);
+        String fileName = fileService.uploadImage(path, image);
 
         // Updating the new file name to the performance
         performanceFromDB.setImage(fileName);
@@ -406,27 +534,93 @@ public class PerformanceServiceImpl implements PerformanceService {
         return modelMapper.map(updatedPerformance, PerformanceDTO.class);
     }
 
-    private String uploadImage(String path, MultipartFile file) throws IOException {
-        // File names of current / original file
-        String originalFileName = file.getOriginalFilename();
-
-        // Generate a unique file name
-        String randomId = UUID.randomUUID().toString();
-        String fileName = randomId.concat(originalFileName.substring(originalFileName.lastIndexOf('.')));
-        String filePath = path + File.separator + fileName;
+    @Override
+    public PerformanceResponse getAllPerformances(Integer pageNumber, Integer pageSize, String sortBy, String sortDir) {
+        SortValidator.validateSort(sortBy,sortDir);
 
 
-        // Check if path exist and create
-        File folder = new File(path);
-        if(!folder.exists())
-            folder.mkdir();
 
-        // Upload to server
-        Files.copy(file.getInputStream(), Paths.get(filePath));
+        Specification<Performance> specification = (root, query, cb) ->{
+            List<Predicate> predicates = new ArrayList<>();
 
-        // Returning file name
-        return fileName;
+            Join<Performance,Show> showJoin = root.join("show");
+            Join<Show,Category> categoryJoin = showJoin.join("category");
+
+            query.distinct(true);
+
+//            if (category != null) {
+//                predicates.add( cb.equal(categoryJoin.get("categoryName"), category));
+//            }
+//
+//            if(showId != null) {
+//                predicates.add( cb.equal(showJoin.get("showId"), showId));
+//            }
+
+//            predicates.add(
+//                    cb.greaterThan(root.get("localDateTime"), cb.currentTimestamp())
+//            );
+
+//            predicates.add(
+//                    cb.equal(root.get("status"), PerformanceStatus.PUBLISHED)
+//            );
+
+//            if (name != null && !name.isBlank()) {
+//                predicates.add(
+//                        cb.like(
+//                                cb.lower(showJoin.get("showName")),
+//                                "%" + name.toLowerCase() + "%"
+//                        )
+//                );
+//            }
+            // sort manual
+            SortHelper.applySort(query, cb, root, sortBy, sortDir);
+
+            return predicates.isEmpty()
+                    ? cb.conjunction() // "true" predicate
+                    : cb.and((jakarta.persistence.criteria.Predicate[]) predicates.toArray(new Predicate[0]));
+
+        };
+
+        Pageable pageDetails = PageRequest.of(pageNumber, pageSize);
+
+        Page<Performance> pageProducts = performanceRepository.findAll(specification, pageDetails);
+
+        List<Performance> performanceList = pageProducts.getContent();
+
+        int numberSeat = 0;
+
+        for(Performance performance : performanceList ) {
+            numberSeat = performanceSeatRepository.countSeatsByPerformanceIdAndStatus(performance.getPerformanceId(), PerformanceSeatStatus.AVAILABLE);
+
+            performance.setAvailableSeats(numberSeat);
+
+        }
+
+
+        //List<Product> productList = productRepository.findAll( specification);
+
+        List<PerformanceDTO> performanceDTOS = performanceList.stream()
+                .map(performance -> {
+                    PerformanceDTO dto = modelMapper.map(performance, PerformanceDTO.class);
+                    dto.setCategoryName(performance.getShow().getCategory().getCategoryName());
+                    dto.setImage(constructImageUrl(performance.getImage()));
+                    dto.setAvailableSeats(performance.getAvailableSeats());
+                    return dto;
+                })
+                .toList();
+
+
+        PerformanceResponse performanceResponse = new PerformanceResponse();
+        performanceResponse.setContent(performanceDTOS);
+        performanceResponse.setPageNumber(pageProducts.getNumber());
+        performanceResponse.setPageSize(pageProducts.getSize());
+        performanceResponse.setTotalElements(pageProducts.getTotalElements());
+        performanceResponse.setTotalPages(pageProducts.getTotalPages());
+        performanceResponse.setLastPage(pageProducts.isLast());
+
+        return performanceResponse;
     }
+
 
     //method for patch update
     public Performance apply(Map<String, Object> patchPayLoad, Performance tempPerformance) {

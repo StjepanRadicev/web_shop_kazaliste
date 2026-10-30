@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 
 @Data
 @NoArgsConstructor
@@ -29,5 +31,11 @@ public class PerformanceSeatDTO {
     private String performanceName;
 
     private String showName;
+
+    private LocalDateTime localDateTime;
+
+    private LocalDateTime heldUntil;
+
+    private String image;
 }
 

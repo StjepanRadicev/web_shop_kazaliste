@@ -13,7 +13,7 @@ public class SeatHoldCleanupJob {
     private CartService cartService;
 
 
-    @Scheduled(fixedDelay = 60_000) // 1 min
+    @Scheduled(fixedDelay = 30_000) // 1 min
     @Transactional
     public void cleanup() {
         cartService.cleanupExpiredHeldItems();

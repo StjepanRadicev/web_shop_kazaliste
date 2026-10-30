@@ -2,7 +2,6 @@ package com.ecommerce.project.exception;
 
 import com.ecommerce.project.payload.APIResponse;
 import org.apache.coyote.BadRequestException;
-import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,8 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.ConstraintViolation;
-import java.util.HashMap;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,11 +84,20 @@ public class MyGlobalExceptionHandler {
 
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<String> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         // ovdje možeš parsirati exception poruku ako želiš detalje
 
-        return ResponseEntity.badRequest().body("Greška spremanja u bazu !!!");
+        String detail = ex.getRootCause() != null
+                ? ex.getRootCause().getMessage()
+                : ex.getMessage();
+
+        ErrorResponse error = new ErrorResponse();
+        error.setMessage("Greška spremanja");
+        error.setDetail(detail);
+
+        return ResponseEntity.badRequest().body(error);
     }
+
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {

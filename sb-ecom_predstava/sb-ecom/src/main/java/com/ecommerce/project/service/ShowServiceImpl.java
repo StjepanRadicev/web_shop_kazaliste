@@ -47,7 +47,15 @@ public class ShowServiceImpl implements ShowService{
         Show showFromDb = showRepository.findByShowNameIgnoreCase(show.getShowName());
 
         if (showFromDb != null) {
-            throw new APIException("Show with the name " + showDTO.getShowName() + " already exists !!!");
+            throw new APIException("Predstava s imenom " + showDTO.getShowName() + " već postoji.");
+        }
+
+        if (show.getDuration() == null || show.getDuration() <= 0) {
+            throw new APIException("Trajanje predstave mora biti veće od 0 minuta.");
+        }
+
+        if(show.getShowDescription().trim().length() < 100 || show.getShowDescription().trim().length() > 1000) {
+            throw new APIException("Opis mora imati između 100 i 1000 znakova..");
         }
 
         show.setCategory(category);
@@ -94,6 +102,18 @@ public class ShowServiceImpl implements ShowService{
     }
 
     @Override
+    public List<ShowDTO> getAllShowsWithoutPagination() {
+
+        List<Show> shows = showRepository.findAll(
+                Sort.by("showName").ascending()
+        );
+
+        return shows.stream()
+                .map(show -> modelMapper.map(show, ShowDTO.class))
+                .toList();
+    }
+
+    @Override
     public ShowDTO deleteShow(Long showId) {
 
         Show show = showRepository.findById(showId)
@@ -119,11 +139,18 @@ public class ShowServiceImpl implements ShowService{
             }
         }
 
+        if (show.getDuration() == null || show.getDuration() <= 0) {
+            throw new APIException("Trajanje predstave mora biti veće od 0 minuta.");
+        }
+
+        if(show.getShowDescription().trim().length() < 100 || show.getShowDescription().trim().length() > 1000) {
+            throw new APIException("Opis mora imati između 100 i 1000 znakova..");
+        }
 
         // Update the product info with the one in request body
         showFromDb.setShowName(show.getShowName());
         showFromDb.setDuration(show.getDuration());
-        showFromDb.setDescription(show.getDescription());
+        showFromDb.setShowDescription(show.getShowDescription());
 
         Show updatedShow = showRepository.save(showFromDb);
 

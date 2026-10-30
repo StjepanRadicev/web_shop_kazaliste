@@ -19,7 +19,7 @@ public class Cart {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long cartId;
 
-    private double totalPrice = 0.0;
+    private double totalPrice = 0.00;
 
     @OneToOne
     @JoinColumn(name = "user_id")

@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,14 +26,12 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 @Validated
+@RequiredArgsConstructor
 public class CategoryController {
 
-    @Autowired
-    private CategoryService categoryService;
 
-//    public CategoryController(CategoryService categoryService) {
-//        this.categoryService = categoryService;
-//    }
+    private final  CategoryService categoryService;
+    
 
     @GetMapping("/echo")
     public ResponseEntity<String> echoMessage(@RequestParam(name = "message", required = false) String message) {

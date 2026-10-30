@@ -4,6 +4,7 @@ package com.ecommerce.project.repositories;
 import com.ecommerce.project.model.Performance;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
+import jakarta.validation.constraints.FutureOrPresent;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,9 +20,9 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long>,
 
     List<Performance> findByShow_Category_CategoryNameOrderByPriceAsc(String name);
 
-    List<Performance> findByPerformanceNameContainingIgnoreCase(String keyword);
+    //List<Performance> findByPerformanceNameContainingIgnoreCase(String keyword);
 
-    Performance findByPerformanceNameIgnoreCase(String performanceName);
+    //Performance findByPerformanceNameIgnoreCase(String performanceName);
 
     @Query(value = """
             SELECT * FROM performance WHERE local_date_time > NOW()""", nativeQuery = true)
@@ -36,4 +37,26 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long>,
     """)
     int markFinished(@Param("now") LocalDateTime now);
 
+    @Query("""
+        SELECT p 
+        FROM Performance p 
+        WHERE p.localDateTime BETWEEN :start AND :end
+        """)
+    List<Performance> findByHourRange(LocalDateTime start, LocalDateTime end);
+
+    @Query(value = """
+        SELECT p.*
+        FROM performance p
+        JOIN shows s ON p.show_id = s.show_id
+        WHERE :newStart < (p.local_date_time + s.duration * INTERVAL '1 minute')
+          AND :newEnd > p.local_date_time AND p.hall_id = :hallId
+        """, nativeQuery = true)
+    List<Performance> findOverlappingPerformances(
+            @Param("newStart") LocalDateTime newStart,
+            @Param("newEnd") LocalDateTime newEnd,
+            @Param("hallId") Long hallId
+            //@Param("performanceId") Long performanceId
+    );
 }
+
+

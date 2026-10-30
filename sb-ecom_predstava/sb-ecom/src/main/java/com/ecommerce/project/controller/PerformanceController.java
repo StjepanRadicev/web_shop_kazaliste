@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Map;
 
+
 @RestController
 @RequestMapping("/api")
 @Validated
@@ -42,11 +43,11 @@ public class PerformanceController {
         return new ResponseEntity<>(performanceResponse, HttpStatus.OK);
     }
 
-    @GetMapping("/public/performances/keyword/{keyword}")
-    public ResponseEntity<PerformanceResponse> getPerformanceByKeyword(@PathVariable String keyword) {
-        PerformanceResponse performanceResponse = performanceService.searchPerformanceByKeyword(keyword);
-        return new ResponseEntity<>(performanceResponse, HttpStatus.FOUND);
-    }
+//    @GetMapping("/public/performances/keyword/{keyword}")
+//    public ResponseEntity<PerformanceResponse> getPerformanceByKeyword(@PathVariable String keyword) {
+//        PerformanceResponse performanceResponse = performanceService.searchPerformanceByKeyword(keyword);
+//        return new ResponseEntity<>(performanceResponse, HttpStatus.FOUND);
+//    }
 
     @GetMapping("/public/categories/{categoryId}/performances")
     public ResponseEntity<PerformanceResponse> getPerformanceByCategory(@PathVariable Long categoryId) {
@@ -60,18 +61,19 @@ public class PerformanceController {
     public ResponseEntity<PerformanceResponse> getPerformanceByAll(
             @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER,required = false)@Min(0) Integer pageNumber,
             @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false)@Min(1) @Max(100) Integer pageSize,
-            @RequestParam(required = false)@Min(1) Long categoryId,
-            @RequestParam(required = false)@Min(1) Long showId,
+            @RequestParam(name = "category",required = false) String category,
+            @RequestParam(required = false) String showId,
             @RequestParam(defaultValue = AppConstants.SORT_PERFORMANCE_BY, required = false) String sortBy,
-            @RequestParam(defaultValue = AppConstants.SORT_DIR, required = false) String sortDir) {
+            @RequestParam(defaultValue = AppConstants.SORT_DIR, required = false) String sortDir,
+            @RequestParam(required = false) String name ){
 
-        PerformanceResponse performanceResponse = performanceService.getPerformancesByAll(pageNumber, pageSize, categoryId, showId, sortBy, sortDir);
+        PerformanceResponse performanceResponse = performanceService.getPerformancesByAll(pageNumber, pageSize, category, showId, sortBy, sortDir, name);
 
         return  new ResponseEntity<>(performanceResponse, HttpStatus.OK);
     }
 
     @PutMapping("/admin/performance/{performanceId}")
-    public ResponseEntity<PerformanceDTO> updatePerformance(@RequestBody PerformanceDTO performanceDTO,
+    public ResponseEntity<PerformanceDTO> updatePerformance(@Valid @RequestBody PerformanceDTO performanceDTO,
                                                         @PathVariable Long performanceId) {
 
         PerformanceDTO updatedPerformanceDTO = performanceService.updatePerformance(performanceDTO, performanceId);
@@ -103,6 +105,19 @@ public class PerformanceController {
 
         PerformanceDTO updatedPerformance = performanceService.updatePerformanceImage(performanceId, image);
         return new ResponseEntity<>(updatedPerformance, HttpStatus.OK);
+    }
+
+    @GetMapping("/admin/performances")
+    public ResponseEntity<PerformanceResponse> getAllPerformancesForAdmin(
+            @RequestParam(name = "pageNumber", defaultValue = AppConstants.PAGE_NUMBER,required = false)@Min(0) Integer pageNumber,
+            @RequestParam(name = "pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false)@Min(1) @Max(100) Integer pageSize,
+            @RequestParam(defaultValue = AppConstants.SORT_PERFORMANCE_BY, required = false) String sortBy,
+            @RequestParam(defaultValue = AppConstants.SORT_DIR, required = false) String sortDir
+    ){
+
+        PerformanceResponse performanceResponse = performanceService.getAllPerformances(pageNumber, pageSize, sortBy, sortDir );
+
+        return  new ResponseEntity<>(performanceResponse, HttpStatus.OK);
     }
 }
 

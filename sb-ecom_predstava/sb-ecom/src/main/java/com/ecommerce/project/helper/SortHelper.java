@@ -11,14 +11,14 @@ public class SortHelper {
     public static void applySort(CriteriaQuery<?> query, CriteriaBuilder cb, Root<Performance> root, String sortBy, String sortDir) {
         Path<?> sortPath;
 
-        if("naziv predstave".equals(sortBy)) {
+        if("showName".equals(sortBy)) {
             sortPath =  root.join("show").get("showName");
         }
         else if ("naziv kategorije".equals(sortBy)) {
             sortPath = root.join("show").join("category").get("categoryName");
         }
         else if ("naziv projekcije".equals(sortBy)) {
-            sortPath = root.get("productName");
+            sortPath = root.get("performanceName");
         }
         else if ("cijena".equals(sortBy)) {
             sortPath = root.get("price");

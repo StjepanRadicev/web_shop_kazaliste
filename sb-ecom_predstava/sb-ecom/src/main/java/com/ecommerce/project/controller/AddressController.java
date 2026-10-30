@@ -7,6 +7,7 @@ import com.ecommerce.project.payload.AddressPatchRequest;
 import com.ecommerce.project.service.AddressService;
 import com.ecommerce.project.util.AuthUtil;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,13 +20,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 @Validated
+@RequiredArgsConstructor
 public class AddressController {
 
-    @Autowired
-    private AuthUtil authUtil;
 
-    @Autowired
-    private AddressService addressService;
+    private final AuthUtil authUtil;
+
+
+    private final AddressService addressService;
 
 
 

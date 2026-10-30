@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api")
 @Validated
@@ -21,7 +23,7 @@ public class ShowController {
     @Autowired
     private ShowService showService;
 
-    @PostMapping("/public/categories/{categoryId}/show")
+    @PostMapping("/admin/categories/{categoryId}/show")
     public ResponseEntity<ShowDTO> createShow(@Valid @RequestBody ShowDTO showDTO,
                                               @PathVariable Long categoryId) {
 
@@ -41,6 +43,14 @@ public class ShowController {
         ShowResponse showResponse = showService.getAllShow(pageNumber, pageSize, sortBy, sortOrder);
 
         return new ResponseEntity<>(showResponse, HttpStatus.OK);
+    }
+
+    @GetMapping("/public/show/all")
+    public ResponseEntity<List<ShowDTO>> getAllShowsWithoutPagination() {
+
+        List<ShowDTO> shows = showService.getAllShowsWithoutPagination();
+
+        return ResponseEntity.ok(shows);
     }
 
     @DeleteMapping("/admin/show/{showId}")

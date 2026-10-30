@@ -24,7 +24,8 @@ public class Show {
 
     private Long duration;
 
-    private String description;
+    @Column(length = 1000)
+    private String showDescription;
 
     @ManyToOne
     @JoinColumn(name = "category_id")

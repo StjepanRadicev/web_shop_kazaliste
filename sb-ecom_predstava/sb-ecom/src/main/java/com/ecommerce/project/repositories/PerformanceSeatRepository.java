@@ -1,6 +1,7 @@
 package com.ecommerce.project.repositories;
 
 import com.ecommerce.project.model.PerformanceSeat;
+import com.ecommerce.project.model.PerformanceSeatStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -16,17 +17,37 @@ public interface PerformanceSeatRepository extends JpaRepository<PerformanceSeat
     @Query("""
     select ps from PerformanceSeat ps
     where ps.performance.id = :performanceId and ps.seat.id = :seatId
-  """)
+    """)
     Optional<PerformanceSeat> findForUpdate(Long performanceId, Long seatId);
 
     @Query("""
     select ps from PerformanceSeat ps
     where ps.performance.id = :performanceId
-  """)
+    """)
     List<PerformanceSeat> findByPerformanceId(Long performanceId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select ps from PerformanceSeat ps where ps.performanceSeatId = :psId")
     Optional<PerformanceSeat> findByIdForUpdate(@Param("psId") Long performanceSeatId);
 
+
+    @Query("""
+    SELECT COUNT(ps) FROM PerformanceSeat ps
+    WHERE ps.performance.id = :performanceId
+    AND ps.status = :status
+    """)
+    int countSeatsByPerformanceIdAndStatus(
+            @Param("performanceId") Long performanceId,
+            @Param("status") PerformanceSeatStatus status
+    );
+
+    boolean existsByPerformance_PerformanceIdAndStatus(
+            Long performanceId,
+            PerformanceSeatStatus status
+    );
+
+    List<PerformanceSeat> findByPerformance_PerformanceIdAndStatus(
+            Long performanceId,
+            PerformanceSeatStatus status
+    );
 }

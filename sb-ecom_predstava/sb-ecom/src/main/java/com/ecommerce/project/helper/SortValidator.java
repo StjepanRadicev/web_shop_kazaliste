@@ -6,7 +6,7 @@ import java.util.Set;
 
 public class SortValidator {
 
-    private static final Set<String> allowedFields = Set.of("naziv projekcije", "cijena", "naziv kategorije", "naziv predstave", "performanceName", "categoryName", "showName", "localDateTime");
+    private static final Set<String> allowedFields = Set.of("naziv projekcije", "cijena", "naziv kategorije", "naziv predstave",  "categoryName", "showName", "localDateTime", "price");
 
     public static void validateSort(String sortBy, String sortDir) {
 

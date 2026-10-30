@@ -16,16 +16,11 @@ public class PerformanceDTO {
 
     private Long performanceId;
 
-//    @NotBlank(message = "Naziv proizvoda je obavezan.")
-//    @Size(max = 100, message = "Naziv ne smije imati više od 100 znakova.")
-    private String performanceName;
-
     @URL(message = "Slika mora biti ispravna URL adresa.")
     @Size(max = 255, message = "URL slike ne smije biti duži od 255 znakova.")
     private String image;
 
-//    @NotNull(message = "Količina je obavezna.")
-//    @Min(value = 0, message = "Količina ne može biti manja od 0.")
+    @Min(value = 0, message = "Količina ne može biti manja od 0.")
     private Integer totalSeats;
 
     private Integer availableSeats;
@@ -37,8 +32,8 @@ public class PerformanceDTO {
     @PositiveOrZero(message = "Cijena mora biti 0 ili više.")
     private double price;
 
-    @Size(max = 500, message = "Opis može imati najviše 500 znakova.")
-    private String description;
+
+    private String showDescription;
 
     @PositiveOrZero(message = "Popust mora biti 0 ili više.")
     @Max(value = 100, message = "Popust ne može biti veći od 100%.")
@@ -47,7 +42,7 @@ public class PerformanceDTO {
     @PositiveOrZero(message = "Posebna cijena mora biti 0 ili više.")
     private double specialPrice;
 
-    @FutureOrPresent(message = "Datum mora biti sadašnji ili budući.")
+    //@FutureOrPresent(message = "Datum mora biti sadašnji ili budući.")
     private LocalDateTime localDateTime;
 
     private Long showId;

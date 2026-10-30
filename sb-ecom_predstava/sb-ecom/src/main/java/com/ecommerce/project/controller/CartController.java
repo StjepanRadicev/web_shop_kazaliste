@@ -2,9 +2,11 @@ package com.ecommerce.project.controller;
 
 import com.ecommerce.project.model.Cart;
 import com.ecommerce.project.payload.CartDTO;
+import com.ecommerce.project.payload.CartItemDTO;
 import com.ecommerce.project.repositories.CartRepository;
 import com.ecommerce.project.service.CartService;
 import com.ecommerce.project.util.AuthUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,16 +16,24 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class CartController {
 
-    @Autowired
-    private CartService cartService;
 
-    @Autowired
-    CartRepository cartRepository;
+    private final CartService cartService;
 
-    @Autowired
-    AuthUtil authUtil;
+
+    private final CartRepository cartRepository;
+
+
+    private final AuthUtil authUtil;
+
+    @PostMapping("/cart/create")
+    public ResponseEntity<String> createOrUpdateCart(@RequestBody List<CartItemDTO> cartItems) {
+        String response = cartService.createOrUpdateCartWithItems(cartItems);
+
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
 
     @PostMapping("/carts/performances/{performanceSeatId}")
     public ResponseEntity<CartDTO> addSeatToCart(@PathVariable Long performanceSeatId) {
@@ -64,6 +74,14 @@ public class CartController {
         String status = cartService.deletePerformanceFromCart(cartId, performanceId);
 
         return new ResponseEntity<String>(status, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/cart/clear")
+    public ResponseEntity<Void> deleteCart() {
+
+        Void status = cartService.deleteCart();
+
+        return ResponseEntity.noContent().build();
     }
 }
 

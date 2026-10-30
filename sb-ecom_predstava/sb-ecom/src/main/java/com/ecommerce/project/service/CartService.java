@@ -1,6 +1,7 @@
 package com.ecommerce.project.service;
 
 import com.ecommerce.project.payload.CartDTO;
+import com.ecommerce.project.payload.CartItemDTO;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -23,4 +24,8 @@ public interface CartService {
 
     @Transactional
     void cleanupExpiredHeldItems();
+
+    String createOrUpdateCartWithItems(List<CartItemDTO> cartItems);
+
+    Void deleteCart();
 }

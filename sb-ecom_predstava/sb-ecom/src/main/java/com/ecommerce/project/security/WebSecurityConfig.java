@@ -9,6 +9,7 @@ import com.ecommerce.project.repositories.UserRepository;
 import com.ecommerce.project.security.jwt.AuthEntryPointJwt;
 import com.ecommerce.project.security.jwt.AuthTokenFilter;
 import com.ecommerce.project.security.services.UserDetailsServiceImpl;
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -85,6 +86,7 @@ public class WebSecurityConfig {
                 )
                 .authorizeHttpRequests(auth ->
                 auth.requestMatchers("/api/auth/**").permitAll()
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
