@@ -17,5 +17,5 @@ public interface ShowService {
 
     ShowDTO deleteShow(Long showId);
 
-    ShowDTO updateShow(@Valid ShowDTO showDTO, Long showId);
+    ShowDTO updateShow(@Valid ShowDTO showDTO, Long showId, Long categoryId);
 }

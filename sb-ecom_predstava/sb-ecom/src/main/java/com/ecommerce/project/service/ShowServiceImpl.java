@@ -124,10 +124,14 @@ public class ShowServiceImpl implements ShowService{
     }
 
     @Override
-    public ShowDTO updateShow(ShowDTO showDTO, Long showId) {
+    public ShowDTO updateShow(ShowDTO showDTO, Long showId, Long categoryId) {
         // Get the existing show from DB
         Show showFromDb = showRepository.findById(showId)
                 .orElseThrow(()-> new ResourceNotFoundException("Show", "showId", showId));
+
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category", "categoryId", categoryId));
 
         Show show = modelMapper.map(showDTO, Show.class);
 
@@ -152,6 +156,7 @@ public class ShowServiceImpl implements ShowService{
         showFromDb.setShowName(show.getShowName());
         showFromDb.setDuration(show.getDuration());
         showFromDb.setShowDescription(show.getShowDescription());
+        showFromDb.setCategory(category);
 
         Show updatedShow = showRepository.save(showFromDb);
 

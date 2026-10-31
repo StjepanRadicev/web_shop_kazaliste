@@ -61,10 +61,13 @@ public class ShowController {
         return new ResponseEntity<>(deleteShow, HttpStatus.OK);
     }
 
-    @PutMapping("/public/show/{showId}")
-    public ResponseEntity<ShowDTO> updateShow(@Valid @RequestBody ShowDTO showDTO, @PathVariable Long showId) {
+    @PutMapping("/admin/show/{showId}/categories/{categoryId}")
+    public ResponseEntity<ShowDTO> updateShow(
+            @Valid @RequestBody ShowDTO showDTO,
+            @PathVariable Long showId,
+            @PathVariable Long categoryId) {
 
-        ShowDTO updatedShowDTO = showService.updateShow(showDTO, showId);
+        ShowDTO updatedShowDTO = showService.updateShow(showDTO, showId, categoryId);
 
         return new ResponseEntity<>(updatedShowDTO, HttpStatus.OK);
     }
