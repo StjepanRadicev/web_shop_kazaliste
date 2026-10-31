@@ -305,7 +305,7 @@ public class PerformanceServiceImpl implements PerformanceService {
                 .map(performance -> {
                     PerformanceDTO dto = modelMapper.map(performance, PerformanceDTO.class);
                     dto.setCategoryName(performance.getShow().getCategory().getCategoryName());
-                    dto.setImage(constructImageUrl(performance.getImage()));
+                    dto.setImage(performance.getImage());
                     dto.setAvailableSeats(performance.getAvailableSeats());
                     return dto;
                 })

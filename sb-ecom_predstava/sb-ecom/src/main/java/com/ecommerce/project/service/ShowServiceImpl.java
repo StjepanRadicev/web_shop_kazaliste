@@ -133,9 +133,10 @@ public class ShowServiceImpl implements ShowService{
 
         Show savedShowByName = showRepository.findByShowNameIgnoreCase(show.getShowName());
 
+
         if (savedShowByName != null) {
             if (!savedShowByName.getShowId().equals(showId)) {
-                throw new APIException("Show with the name " + show.getShowName() + " already exists !");
+                throw new APIException("Predstava s imenom " + show.getShowName() + " već postoji !");
             }
         }
 
