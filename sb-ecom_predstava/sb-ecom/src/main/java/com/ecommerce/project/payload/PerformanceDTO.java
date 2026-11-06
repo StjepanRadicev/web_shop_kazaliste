@@ -29,14 +29,14 @@ public class PerformanceDTO {
 
     private Integer totalInCarts;
 
-    @PositiveOrZero(message = "Cijena mora biti 0 ili više.")
+    @PositiveOrZero(message = "Vrijednost nije ispravna.")
     private double price;
 
 
     private String showDescription;
 
-    @PositiveOrZero(message = "Popust mora biti 0 ili više.")
-    @Max(value = 100, message = "Popust ne može biti veći od 100%.")
+    @PositiveOrZero(message = "Vrijednost nije ispravna.")
+    @Max(value = 100, message = "Vrijednsot nije ispravna.")
     private double discount;
 
     @PositiveOrZero(message = "Posebna cijena mora biti 0 ili više.")

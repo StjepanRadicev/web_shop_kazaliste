@@ -1,21 +1,32 @@
-
 package com.ecommerce.project.email;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClient;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class EmailService {
+    // Ostatak tvog postojećeg koda
 
-    private final JavaMailSender mailSender;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+    private final RestClient restClient;
+    private final String senderEmail;
+
+    public EmailService(
+            @Value("${brevo.api.key}") String apiKey,
+            @Value("${brevo.sender.email}") String senderEmail) {
+
+        this.senderEmail = senderEmail;
+
+        this.restClient = RestClient.builder()
+                .baseUrl("https://api.brevo.com/v3")
+                .defaultHeader("api-key", apiKey)
+                .build();
     }
 
     public void sendOrderConfirmation(
@@ -23,26 +34,35 @@ public class EmailService {
             Long orderId,
             Double totalAmount) {
 
-        SimpleMailMessage message = new SimpleMailMessage();
+        String subject = "Potvrda kupnje ulaznica - Narudžba #" + orderId;
 
-        message.setTo(customerEmail);
-        message.setSubject("Potvrda kupnje ulaznica - Narudžba #" + orderId);
-
-        message.setText(
+        String content =
                 "Poštovani,\n\n" +
                         "Vaša kupnja ulaznica uspješno je završena.\n\n" +
                         "Broj narudžbe: " + orderId + "\n" +
                         "Ukupan iznos: " +
-                        String.format(java.util.Locale.forLanguageTag("hr-HR"),
+                        String.format(Locale.forLanguageTag("hr-HR"),
                                 "%.2f", totalAmount) + " EUR\n\n" +
                         "Status plaćanja: Plaćeno\n\n" +
-                        "Hvala na kupnji!"
+                        "Hvala na kupnji!";
+
+        Map<String, Object> request = Map.of(
+                "sender", Map.of(
+                        "name", "Kazalište",
+                        "email", senderEmail
+                ),
+                "to", List.of(
+                        Map.of("email", customerEmail)
+                ),
+                "subject", subject,
+                "textContent", content
         );
 
-        mailSender.send(message);
+        restClient.post()
+                .uri("/smtp/email")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .toBodilessEntity();
     }
 }
-
-
-
-

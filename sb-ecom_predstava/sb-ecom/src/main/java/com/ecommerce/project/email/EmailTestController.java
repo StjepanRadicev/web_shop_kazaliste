@@ -19,7 +19,7 @@ public class EmailTestController {
     public ResponseEntity<String> testEmail() {
 
         emailService.sendOrderConfirmation(
-                "stjepan246" + "@gmail.com",
+                "stjepan.radicev1" + "@gmail.com",
                 123L,
                 30.00
         );
