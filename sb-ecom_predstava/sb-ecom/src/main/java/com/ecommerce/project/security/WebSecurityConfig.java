@@ -89,7 +89,6 @@ public class WebSecurityConfig {
                         //.requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/test/**").permitAll()
                         .requestMatchers("/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/csrf").permitAll()
                         .anyRequest().authenticated());
@@ -124,7 +123,7 @@ public class WebSecurityConfig {
     }
 
 
-    @Value("${frontend.url}")
+    @Value("${app.frontend.url}")
     private String frontendUrl;
 
     @Bean

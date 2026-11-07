@@ -11,8 +11,9 @@ import java.util.Map;
 
 @Service
 public class EmailService {
-    // Ostatak tvog postojećeg koda
 
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     private final RestClient restClient;
     private final String senderEmail;
@@ -65,4 +66,47 @@ public class EmailService {
                 .retrieve()
                 .toBodilessEntity();
     }
+
+
+
+
+    public void sendVerificationEmail(
+            String customerEmail,
+            String verificationToken) {
+
+        String verificationUrl =
+                frontendUrl + "/verify-email?token=" + verificationToken;
+
+        String subject = "Potvrdite svoju e-mail adresu";
+
+        String content =
+                "Poštovani,\n\n" +
+                        "Hvala na registraciji!\n\n" +
+                        "Za potvrdu svoje e-mail adrese kliknite na sljedeći link:\n\n" +
+                        verificationUrl + "\n\n" +
+                        "Link vrijedi 24 sata.\n\n" +
+                        "Ako niste zatražili registraciju, zanemarite ovu poruku.\n\n" +
+                        "Lijep pozdrav,\n" +
+                        "Kazalište";
+
+        Map<String, Object> request = Map.of(
+                "sender", Map.of(
+                        "name", "Kazalište",
+                        "email", senderEmail
+                ),
+                "to", List.of(
+                        Map.of("email", customerEmail)
+                ),
+                "subject", subject,
+                "textContent", content
+        );
+
+        restClient.post()
+                .uri("/smtp/email")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
 }

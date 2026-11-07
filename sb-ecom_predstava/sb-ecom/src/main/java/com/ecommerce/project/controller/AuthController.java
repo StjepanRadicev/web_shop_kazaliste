@@ -1,6 +1,7 @@
 package com.ecommerce.project.controller;
 
 
+import com.ecommerce.project.email.EmailService;
 import com.ecommerce.project.model.AppRole;
 import com.ecommerce.project.model.Role;
 import com.ecommerce.project.model.User;
@@ -14,6 +15,7 @@ import com.ecommerce.project.security.response.MessageResponse;
 import com.ecommerce.project.security.response.UserInfoResponse;
 import com.ecommerce.project.security.services.UserDetailsImpl;
 import com.ecommerce.project.service.AuthService;
+import com.ecommerce.project.service.EmailVerificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -52,6 +55,12 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private EmailVerificationService emailVerificationService;
+
+    @Autowired
+    private EmailService emailService;
+
 
 
     @PostMapping("/signin")
@@ -69,11 +78,11 @@ public class AuthController {
         Map<String, String> errors = new HashMap<>();
 
         if (userRepository.existsByUserName(signupRequest.getUsername())) {
-            errors.put("username", "Username is already taken!");
+            errors.put("username", "Korisničko ime se već koristi!");
         }
 
         if (userRepository.existsByEmail(signupRequest.getEmail())) {
-            errors.put("email", "Email is already taken!");
+            errors.put("email", "Email se već koristi!");
         }
 
         if (!errors.isEmpty()) {
@@ -92,13 +101,42 @@ public class AuthController {
         Role userRole = roleRepository.findByRoleName(AppRole.ROLE_USER)
                 .orElseThrow(() -> new RuntimeException("Error: Role is not Found!"));
 
+
+
         user.setRoles(Set.of(userRole));
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Generiranje verifikacijskog tokena
+                String verificationToken =
+                        emailVerificationService.generateVerificationToken(savedUser);
+
+        // Slanje verifikacijskog e-maila
+
+        try {
+            emailService.sendVerificationEmail(
+                    savedUser.getEmail(),
+                    verificationToken
+            );
+        } catch (RestClientException e) {
+
+            return ResponseEntity
+                    .status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(
+                            "message",
+                            "Račun je kreiran, ali verifikacijski e-mail " +
+                                    "trenutačno nije moguće poslati. " +
+                                    "Pokušajte ponovno putem opcije za slanje " +
+                                    "novog verifikacijskog linka."
+                    ));
+        }
 
         return ResponseEntity.ok(
-                new MessageResponse("User registered successfully!")
+                new MessageResponse(
+                        "Registracija je uspjela! Molimo verificirajte vašu email adresu."
+                )
         );
+
 
 //        if(userRepository.existsByUserName(signupRequest.getUsername()) ) {
 //            return ResponseEntity
