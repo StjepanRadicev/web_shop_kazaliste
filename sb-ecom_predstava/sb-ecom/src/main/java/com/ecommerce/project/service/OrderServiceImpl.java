@@ -1,5 +1,6 @@
 package com.ecommerce.project.service;
 
+import com.ecommerce.project.config.DemoUsersProperties;
 import com.ecommerce.project.email.EmailService;
 import com.ecommerce.project.exception.APIException;
 import com.ecommerce.project.exception.ResourceNotFoundException;
@@ -62,6 +63,9 @@ public class OrderServiceImpl implements OrderService{
 
     @Autowired
     private  EmailService emailService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     @Transactional
@@ -327,7 +331,7 @@ public class OrderServiceImpl implements OrderService{
 
                 OrderItemDTO dto = new OrderItemDTO();
                 dto.setRowLabel(seat.getSeat().getRowLabel());
-                dto.setSection(seat.getSeat().getSection());
+                dto.setSeatNumber(seat.getSeat().getSeatNumber());
                 dto.setOrderedPerformancePrice(item.getPerformancePrice());
                 dto.setDiscount(item.getDiscount());
                 itemDTOs.add(dto);
@@ -439,7 +443,91 @@ public class OrderServiceImpl implements OrderService{
         );
     }
 
+    @Transactional(readOnly = true)
+    @Override
+    public OrderResponse getOrdersByUserId(
+            Long userId,
+            Integer pageNumber,
+            Integer pageSize,
+            String sortBy,
+            String sortOrder) {
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User", "userId", userId)
+                );
+
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageDetails = PageRequest.of(
+                pageNumber,
+                pageSize,
+                sortByAndOrder
+        );
+
+        Page<Order> pageOrders = orderRepository.findByEmailIgnoreCase(
+                user.getEmail(),
+                pageDetails
+        );
+
+        List<OrderDTO> orderDTOs = pageOrders.getContent()
+                .stream()
+                .map(order -> {
+
+                    OrderDTO dto = modelMapper.map(order, OrderDTO.class);
+
+                    List<OrderItemDTO> itemDTOs = order.getOrderItems()
+                            .stream()
+                            .map(this::mapOrderItemToDTO)
+                            .toList();
+
+                    dto.setOrderItems(itemDTOs);
+
+                    return dto;
+                })
+                .toList();
+
+        OrderResponse orderResponse = new OrderResponse();
+
+        orderResponse.setContent(orderDTOs);
+        orderResponse.setPageNumber(pageOrders.getNumber());
+        orderResponse.setPageSize(pageOrders.getSize());
+        orderResponse.setTotalElements(pageOrders.getTotalElements());
+        orderResponse.setTotalPages(pageOrders.getTotalPages());
+        orderResponse.setLastPage(pageOrders.isLast());
+
+        return orderResponse;
+    }
+
+
+    private OrderItemDTO mapOrderItemToDTO(OrderItem item) {
+
+        OrderItemDTO dto = new OrderItemDTO();
+
+        PerformanceSeat performanceSeat = item.getPerformanceSeat();
+
+        dto.setPerformanceName(
+                performanceSeat.getPerformance().getShow().getShowName()
+        );
+
+        dto.setRowLabel(
+                performanceSeat.getSeat().getRowLabel()
+        );
+
+        dto.setSeatNumber(
+                performanceSeat.getSeat().getSeatNumber()
+        );
+
+        dto.setDiscount(item.getDiscount());
+
+        dto.setOrderedPerformancePrice(
+                item.getOrderedPerformancePrice()
+        );
+
+        return dto;
+    }
 }
 
 

@@ -12,6 +12,8 @@ import com.ecommerce.project.payload.PerformanceResponse;
 import com.ecommerce.project.repositories.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.Join;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -79,6 +81,11 @@ public class PerformanceServiceImpl implements PerformanceService {
 
 
     private final FileService fileService;
+
+    private final OrderItemRepository orderItemRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
 
     @Value("${project.image}")
@@ -424,6 +431,14 @@ public class PerformanceServiceImpl implements PerformanceService {
 
         PerformanceStatus newStatus = performanceDTO.getStatus();
 
+//        if (performanceFromDb.getStatus() != PerformanceStatus.DRAFT
+//                && newStatus == PerformanceStatus.DRAFT) {
+//
+//            throw new APIException(
+//                    "Objavljenu izvedbu nije moguće vratiti u status DRAFT."
+//            );
+//        }
+
         if (newStatus == PerformanceStatus.FINISHED ||
                 newStatus == PerformanceStatus.SOLD_OUT) {
 
@@ -501,18 +516,82 @@ public class PerformanceServiceImpl implements PerformanceService {
         return modelMapper.map(patchedSavedPerformance, PerformanceDTO.class);
     }
 
+
+
+
+
+    @Transactional
     @Override
     public PerformanceDTO deletePerformance(Long performanceId) {
-        Performance performanceFromDb = performanceRepository.findById(performanceId)
-                .orElseThrow(()-> new ResourceNotFoundException("Performance", "performanceId", performanceId));
 
-//        List<Cart> carts = cartRepository.findCartsByPerformanceId(performanceId);
-//        carts.forEach(cart -> cartService.deletePerformanceFromCart(cart.getCartId(), performanceId));
+        Performance performance = performanceRepository.findById(performanceId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Performance", "performanceId", performanceId));
 
-        performanceRepository.delete(performanceFromDb);
+        // Brisanje samo u DRAFT statusu
+        if (performance.getStatus() != PerformanceStatus.DRAFT) {
+            throw new APIException(
+                    "Brisanje izvedbe dozvoljeno je samo u statusu DRAFT."
+            );
+        }
 
-        return modelMapper.map(performanceFromDb, PerformanceDTO.class);
+        // Provjera narudžbi
+        if (orderItemRepository
+                .existsByPerformanceSeat_Performance_PerformanceId(performanceId)) {
+            throw new APIException(
+                    "Izvedbu nije moguće obrisati jer postoje povezane narudžbe."
+            );
+        }
+
+        // Provjera košarica
+        if (cartItemRepository
+                .existsByPerformanceSeat_Performance_PerformanceId(performanceId)) {
+            throw new APIException(
+                    "Izvedbu nije moguće obrisati jer postoje sjedala u košaricama."
+            );
+        }
+
+        // Dohvat svih sjedala izvedbe
+        List<PerformanceSeat> seats =
+                performanceSeatRepository.findByPerformanceId(performanceId);
+
+
+
+        // Provjera statusa sjedala
+        boolean hasReservedOrSoldSeats = seats.stream()
+                .anyMatch(seat ->
+                        seat.getStatus() != PerformanceSeatStatus.AVAILABLE);
+
+        if (hasReservedOrSoldSeats) {
+            throw new APIException(
+                    "Izvedbu nije moguće obrisati jer postoje rezervirana ili prodana sjedala."
+            );
+        }
+
+        // Pripremi odgovor prije brisanja
+        PerformanceDTO dto = modelMapper.map(performance, PerformanceDTO.class);
+
+
+        int deletedSeats =
+                performanceSeatRepository.deleteByPerformanceId(performanceId);
+
+        entityManager.clear();
+
+        Performance performanceToDelete = performanceRepository.findById(performanceId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Performance", "performanceId", performanceId));
+
+        entityManager.remove(performanceToDelete);
+        entityManager.flush();
+
+        return dto;
+
     }
+
+
+
+
+
 
     @Override
     public PerformanceDTO updatePerformanceImage(Long performanceId, MultipartFile image) throws IOException {

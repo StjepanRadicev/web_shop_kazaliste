@@ -2,9 +2,11 @@ package com.ecommerce.project.repositories;
 
 import com.ecommerce.project.model.PerformanceSeat;
 import com.ecommerce.project.model.PerformanceSeatStatus;
+import com.ecommerce.project.model.PerformanceStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -50,4 +52,34 @@ public interface PerformanceSeatRepository extends JpaRepository<PerformanceSeat
             Long performanceId,
             PerformanceSeatStatus status
     );
+
+
+    @Query("""
+    SELECT
+        ps.performance.show.showId,
+        ps.performance.show.showName,
+        COUNT(DISTINCT ps.performance.performanceId),
+        COUNT(ps),
+        SUM(CASE WHEN ps.status = :soldStatus THEN 1 ELSE 0 END)
+    FROM PerformanceSeat ps
+    WHERE ps.performance.status IN :statuses
+    GROUP BY
+        ps.performance.show.showId,
+        ps.performance.show.showName
+    ORDER BY
+        SUM(CASE WHEN ps.status = :soldStatus THEN 1 ELSE 0 END) DESC
+    """)
+    List<Object[]> getShowOccupancy(
+            @Param("soldStatus") PerformanceSeatStatus soldStatus,
+            @Param("statuses") List<PerformanceStatus> statuses
+    );
+
+
+    @Modifying
+    @Query("""
+    DELETE FROM PerformanceSeat ps
+    WHERE ps.performance.performanceId = :performanceId
+""")
+    int deleteByPerformanceId(@Param("performanceId") Long performanceId);
+
 }

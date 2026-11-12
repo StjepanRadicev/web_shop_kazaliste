@@ -57,6 +57,10 @@ public interface PerformanceRepository extends JpaRepository<Performance, Long>,
             @Param("hallId") Long hallId
             //@Param("performanceId") Long performanceId
     );
+
+    boolean existsByUser_UserId(Long userId);
+
+    boolean existsByShow_ShowId(Long showId);
 }
 
 

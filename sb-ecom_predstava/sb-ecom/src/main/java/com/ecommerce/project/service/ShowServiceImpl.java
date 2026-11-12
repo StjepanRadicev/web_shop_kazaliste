@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -115,14 +116,26 @@ public class ShowServiceImpl implements ShowService{
                 .toList();
     }
 
+    @Transactional
     @Override
     public ShowDTO deleteShow(Long showId) {
 
         Show show = showRepository.findById(showId)
-                .orElseThrow(() -> new ResourceNotFoundException("Show", "showId", showId));
-        showRepository.delete(show);
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Show", "showId", showId));
 
-        return modelMapper.map(show, ShowDTO.class);
+        if (performanceRepository.existsByShow_ShowId(showId)) {
+            throw new APIException(
+                    "Predstavu nije moguće obrisati jer ima povezane izvedbe."
+            );
+        }
+
+        ShowDTO dto = modelMapper.map(show, ShowDTO.class);
+
+        showRepository.delete(show);
+        showRepository.flush();
+
+        return dto;
     }
 
     @Override

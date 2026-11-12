@@ -25,4 +25,6 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM Cart c WHERE c.cartId = :cartId")
     Optional<Cart> findByIdForUpdate(@Param("cartId") Long cartId);
+
+    Optional<Cart> findByUser_UserId(Long userId);
 }

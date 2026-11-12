@@ -13,7 +13,7 @@ public class OrderItemDTO {
 
     private String rowLabel;
 
-    private String section;
+    private Integer seatNumber;
 
     private double discount;
 

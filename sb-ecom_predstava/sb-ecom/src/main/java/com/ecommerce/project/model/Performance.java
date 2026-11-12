@@ -23,9 +23,6 @@ public class Performance {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long performanceId;
 
-//    @Column(unique = true)
-//    //@NotBlank
-//    private String performanceName;
 
     @ManyToOne(fetch = FetchType.LAZY, optional=false)
     @JoinColumn(name="hall_id", nullable=false)

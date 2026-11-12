@@ -11,4 +11,5 @@ public interface ShowRepository extends JpaRepository<Show, Long> {
     Show findByShowName(String showName);
 
     Show findByShowNameIgnoreCase(String showName);
+
 }

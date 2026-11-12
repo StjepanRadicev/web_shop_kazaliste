@@ -98,4 +98,70 @@ public class OrderController {
         return new ResponseEntity<OrderResponse>(orderResponse, HttpStatus.OK);
     }
 
+
+    @GetMapping("/admin/users/{userId}/orders")
+    public ResponseEntity<OrderResponse> getOrdersByUserId(
+            @PathVariable Long userId,
+
+            @RequestParam(defaultValue = "0") Integer pageNumber,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(defaultValue = "orderDate") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortOrder
+    ) {
+
+        OrderResponse orderResponse = orderService.getOrdersByUserId(
+                userId,
+                pageNumber,
+                pageSize,
+                sortBy,
+                sortOrder
+        );
+
+        return ResponseEntity.ok(orderResponse);
+    }
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

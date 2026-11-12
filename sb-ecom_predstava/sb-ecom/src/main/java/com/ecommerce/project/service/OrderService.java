@@ -12,4 +12,6 @@ public interface OrderService {
     void confirmStripePayment(String paymentIntentId);
 
     OrderResponse getAllOrders(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
+
+    OrderResponse getOrdersByUserId (Long userId, Integer pageNumber, Integer pageSize, String sortBy, String sortOrder );
 }
